@@ -27,16 +27,6 @@
     return format.replace(match[0], value).replace(/<[^>]*>/g, '');
   }
 
-  function debounce(fn, wait) {
-    var t;
-    return function () {
-      var args = arguments;
-      var self = this;
-      clearTimeout(t);
-      t = setTimeout(function () { fn.apply(self, args); }, wait);
-    };
-  }
-
   function QuickOrder(root) {
     this.root = root;
     this.rowsHost = root.querySelector('[data-quick-order-rows]');
@@ -67,6 +57,9 @@
       if (event.target.closest('[data-quick-order-clear]')) { self.clear(); return; }
       if (event.target.closest('[data-quick-order-submit]')) { self.submit(); return; }
 
+      var retry = event.target.closest('[data-quick-order-retry]');
+      if (retry) { self.lookup(retry.closest('[data-quick-order-row]')); return; }
+
       var step = event.target.closest('[data-quick-order-step]');
       if (step) {
         var row = step.closest('[data-quick-order-row]');
@@ -86,15 +79,17 @@
       }
     });
 
-    var lookup = debounce(function (row) { self.lookup(row); }, DEBOUNCE);
-
     this.rowsHost.addEventListener('input', function (event) {
       var row = event.target.closest('[data-quick-order-row]');
       if (!row) return;
       if (event.target.matches('[data-quick-order-sku]')) {
         row.dataset.variantId = '';
         row.dataset.price = '';
-        lookup(row);
+        /* Timer lives on the row: a single shared debounce let typing in the
+           next row (scanner / fast typist) cancel this row's pending lookup,
+           silently dropping it from the order. */
+        clearTimeout(row._lookupTimer);
+        row._lookupTimer = setTimeout(function () { self.lookup(row); }, DEBOUNCE);
       }
       if (event.target.matches('[data-quick-order-qty]')) self.refreshRow(row);
     });
@@ -135,6 +130,7 @@
   };
 
   QuickOrder.prototype.resetRow = function (row) {
+    clearTimeout(row._lookupTimer);
     row.querySelector('[data-quick-order-sku]').value = '';
     row.querySelector('[data-quick-order-qty]').value = 1;
     row.querySelector('[data-quick-order-match]').innerHTML = '';
@@ -153,16 +149,15 @@
     row.classList.remove('is-resolved', 'is-missing');
     row.querySelector('[data-quick-order-line-total]').textContent = '';
 
-    if (!term) { matchCell.innerHTML = ''; this.refreshTotals(); return; }
+    if (!term) { matchCell.innerHTML = ''; this.refreshTotals(); return Promise.resolve(); }
 
     row.classList.add('is-loading');
     matchCell.innerHTML = '<span class="quick-order__match-loading"><span class="spinner" aria-hidden="true"></span></span>';
 
     var url = '/search?type=product&view=quick-order&q=' + encodeURIComponent(term);
 
-    fetch(url, { headers: { Accept: 'application/json' } })
-      .then(function (res) { return res.ok ? res.json() : { results: [] }; })
-      .catch(function () { return { results: [] }; })
+    return fetch(url, { headers: { Accept: 'application/json' } })
+      .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('HTTP ' + res.status)); })
       .then(function (data) {
         row.classList.remove('is-loading');
         var results = (data && data.results) || [];
@@ -180,6 +175,20 @@
           '<span class="quick-order__miss">' +
           '<span class="quick-order__miss-title">מקט לא נמצא בקטלוג</span>' +
           '<a class="link fs-xs" href="/search?q=' + encodeURIComponent(term) + '">חיפוש חופשי</a>' +
+          '</span>';
+        self.refreshTotals();
+      })
+      .catch(function () {
+        /* Throttled/offline lookups are NOT "not in catalogue" — show a
+           retryable network-error state instead of the miss message. */
+        row.classList.remove('is-loading');
+        row.classList.add('is-missing');
+        row.dataset.variantId = '';
+        row.dataset.price = '';
+        matchCell.innerHTML =
+          '<span class="quick-order__miss">' +
+          '<span class="quick-order__miss-title">שגיאת רשת - לא ניתן היה לבדוק את המקט</span>' +
+          '<button type="button" class="link fs-xs" data-quick-order-retry>נסו שוב</button>' +
           '</span>';
         self.refreshTotals();
       });
@@ -242,9 +251,9 @@
 
   QuickOrder.prototype.refreshRow = function (row) {
     var price = parseInt(row.dataset.price, 10);
-    var qty = parseInt(row.querySelector('[data-quick-order-qty]').value, 10) || 1;
+    var qty = parseInt(row.querySelector('[data-quick-order-qty]').value, 10) || 0;
     var cell = row.querySelector('[data-quick-order-line-total]');
-    if (row.dataset.variantId && !isNaN(price)) cell.textContent = formatMoney(price * qty);
+    if (row.dataset.variantId && !isNaN(price) && qty > 0) cell.textContent = formatMoney(price * qty);
     else cell.textContent = '';
     this.refreshTotals();
   };
@@ -261,7 +270,7 @@
     var total = 0;
 
     rows.forEach(function (row) {
-      var qty = parseInt(row.querySelector('[data-quick-order-qty]').value, 10) || 1;
+      var qty = parseInt(row.querySelector('[data-quick-order-qty]').value, 10) || 0;
       var price = parseInt(row.dataset.price, 10) || 0;
       items += qty;
       total += price * qty;
@@ -291,6 +300,7 @@
 
     var self = this;
     var added = 0;
+    var queue = [];
 
     lines.slice(0, MAX_ROWS).forEach(function (line) {
       var parts = line.split(/[\s,;\t]+/).filter(Boolean);
@@ -302,9 +312,17 @@
       if (!row) return;
       row.querySelector('[data-quick-order-sku]').value = sku;
       row.querySelector('[data-quick-order-qty]').value = qty;
-      self.lookup(row);
+      queue.push(row);
       added += 1;
     });
+
+    /* Firing all lookups at once (up to MAX_ROWS storefront renders) trips
+       Shopify's throttling; drain the queue at 4 concurrent requests. */
+    function next() {
+      var row = queue.shift();
+      return row ? self.lookup(row).then(next, next) : Promise.resolve();
+    }
+    for (var i = 0; i < 4; i += 1) next();
 
     var skipped = lines.length - added;
     this.switchTab('rows');
@@ -338,41 +356,38 @@
     var items = rows.map(function (row) {
       return {
         id: parseInt(row.dataset.variantId, 10),
-        quantity: parseInt(row.querySelector('[data-quick-order-qty]').value, 10) || 1
+        quantity: parseInt(row.querySelector('[data-quick-order-qty]').value, 10) || 0
       };
     });
+    items = items.filter(function (i) { return i.quantity > 0; });
+    if (!items.length) return;
 
     var self = this;
     this.submitBtn.classList.add('btn--loading');
     this.submitBtn.disabled = true;
 
-    var routes = window.routes || {};
-    fetch(routes.cart_add_url || '/cart/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/javascript' },
-      body: JSON.stringify({ items: items, sections_url: window.location.pathname })
-    })
-      .then(function (res) { return res.json().then(function (body) { return { ok: res.ok, body: body }; }); })
-      .then(function (result) {
+    /* Route through the shared cart pipeline: it re-renders the drawer
+       sections, updates the header bubbles, opens the drawer itself and maps
+       Shopify's English /cart/add errors to the Hebrew cartStrings. A bespoke
+       fetch here left the drawer opening with stale (often empty) contents. */
+    window.ShiloCart.add(items, true)
+      .then(function () {
         self.submitBtn.classList.remove('btn--loading');
         self.submitBtn.disabled = false;
-
-        if (!result.ok) {
-          self.setStatus((result.body && result.body.description) || 'לא הצלחנו להוסיף את הפריטים. נסו שוב.', 'error');
-          return;
-        }
-
         self.setStatus(items.length + ' מקטים נוספו לעגלה בהצלחה.', 'success');
-        document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
-
-        var drawerTrigger = document.querySelector('[data-drawer-open="CartDrawer"]');
-        if (window.themeSettings && window.themeSettings.cartType === 'drawer' && drawerTrigger) drawerTrigger.click();
-        else window.location.href = (window.routes && window.routes.cart_url) || '/cart';
+        if (!(window.themeSettings && window.themeSettings.cartType === 'drawer')) {
+          window.location.href = (window.routes && window.routes.cart_url) || '/cart';
+        }
       })
-      .catch(function () {
+      .catch(function (err) {
         self.submitBtn.classList.remove('btn--loading');
         self.submitBtn.disabled = false;
-        self.setStatus('שגיאת רשת. בדקו את החיבור ונסו שוב.', 'error');
+        /* Multi-item /cart/add is all-or-nothing: one over-stock row rejects
+           the whole batch, so say so explicitly. */
+        self.setStatus(
+          (window.cartErrorText(err) || 'לא הצלחנו להוסיף את הפריטים. נסו שוב.') + ' אף אחד מהפריטים לא נוסף לעגלה.',
+          'error'
+        );
       });
   };
 

@@ -241,12 +241,16 @@
       return data;
     },
 
-    async change(line, quantity) {
+    /* `id` is the line-item key, not a positional line number: line numbers
+       shift when a line is removed, so a second tap during an in-flight request
+       would mutate the wrong item. Keys stay stable, and a change for an
+       already-removed key is a harmless no-op. */
+    async change(id, quantity) {
       const res = await fetch(window.routes.cart_change_url + '.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
-          line,
+          id,
           quantity,
           sections: this.sectionsToRender(),
           sections_url: window.location.pathname
@@ -255,6 +259,14 @@
       const data = await res.json();
       if (!res.ok) {
         throw cartError(cartErrorMessage(data, res.status));
+      }
+      /* A deny-policy quantity cap answers 200 with the cart UNCHANGED plus an
+         English `errors` string. Re-render first so the input snaps back to the
+         server quantity, then throw through the same 422/quantity path so the
+         Hebrew cap message (or the generic fallback) is what gets toasted. */
+      if (data.errors) {
+        await this.afterChange(data.sections);
+        throw cartError(cartErrorMessage({ description: String(data.errors) }, 422));
       }
       await this.afterChange(data.sections);
       return data;
@@ -269,6 +281,15 @@
     },
 
     async afterChange(sections) {
+      /* The server-rendered sections carry {{ cart.note }}, which lags behind
+         text still sitting in the note field's 500ms debounce — snapshot live
+         values by id (ids are stable across re-renders) so typed text survives
+         the swap. The pending timer still POSTs the same text, so display and
+         server converge. */
+      const noteMemo = {};
+      document.querySelectorAll('[data-cart-note]').forEach((el) => {
+        if (el.id) noteMemo[el.id] = el.value;
+      });
       if (sections) {
         Object.entries(sections).forEach(([id, html]) => {
           if (!html) return;
@@ -278,6 +299,27 @@
             if (replacement) el.innerHTML = replacement.innerHTML;
           });
         });
+        Object.keys(noteMemo).forEach((id) => {
+          const el = document.getElementById(id);
+          if (el && el.value !== noteMemo[id]) {
+            el.value = noteMemo[id];
+            const details = el.closest('details');
+            if (details && noteMemo[id].trim() !== '') details.open = true;
+          }
+        });
+        /* The swap just detached the nodes the focus trap's first/last point at,
+           dropping keyboard focus to <body> behind the overlay — re-arm the trap
+           on the open drawer (mirrors facets.js). Guarded to drawers that
+           actually contain a re-rendered cart section, and kept inside the
+           sections branch so the sectionless error-path call doesn't steal
+           focus when no DOM was replaced. */
+        if (
+          Drawers.activeDrawer &&
+          Drawers.activeDrawer.classList.contains('is-open') &&
+          Drawers.activeDrawer.querySelector('[data-cart-section]')
+        ) {
+          window.trapFocus(Drawers.activeDrawer);
+        }
       }
       const cart = await this.getState();
       this.updateBubbles(cart.item_count);
@@ -311,7 +353,7 @@
 
       async onSubmit(e) {
         e.preventDefault();
-        if (!this.submitBtn || this.submitBtn.hasAttribute('aria-disabled')) return;
+        if (!this.submitBtn || this.submitBtn.hasAttribute('aria-disabled') || this.submitBtn.hasAttribute('aria-busy')) return;
 
         this.submitBtn.classList.add('btn--loading');
         this.submitBtn.setAttribute('aria-busy', 'true');
@@ -371,9 +413,9 @@
       connectedCallback() {
         this.addEventListener('click', (e) => {
           e.preventDefault();
-          const line = parseInt(this.dataset.line, 10);
+          const key = this.dataset.key;
           this.closest('[data-cart-line]')?.classList.add('is-removing');
-          Cart.change(line, 0).catch((err) => window.ShiloToast(window.cartErrorText(err), 'error'));
+          Cart.change(key, 0).catch((err) => window.ShiloToast(window.cartErrorText(err), 'error'));
         });
       }
     }
@@ -389,11 +431,23 @@
           window.debounce((e) => {
             const input = e.target;
             if (!input.matches('input')) return;
-            const line = parseInt(this.dataset.line, 10);
+            const key = this.dataset.key;
             const qty = parseInt(input.value, 10);
-            Cart.change(line, qty).catch((err) => {
+            /* An emptied field parses to NaN, which JSON-serializes to null and
+               can delete the line mid-edit — restore the last server-rendered
+               quantity instead (afterChange re-renders after every successful
+               change, so defaultValue always holds the server's number). */
+            if (input.value.trim() === '' || isNaN(qty) || qty < 0) {
+              input.value = input.defaultValue || 1;
+              return;
+            }
+            Cart.change(key, qty).catch(async (err) => {
               window.ShiloToast(window.cartErrorText(err), 'error');
-              Cart.afterChange();
+              /* Nothing re-rendered on this path — resync the input from the
+                 server cart so it doesn't keep showing the rejected value. */
+              const cart = await Cart.afterChange();
+              const item = cart && cart.items && cart.items.find((it) => it.key === key);
+              if (item) input.value = item.quantity;
             });
           }, 350)
         );

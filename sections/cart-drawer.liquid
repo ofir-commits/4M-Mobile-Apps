@@ -74,6 +74,7 @@
                 assign line_max = item.variant.inventory_quantity | at_least: item.quantity
               endif
               assign qty_id = 'CartDrawerQty-' | append: section.id | append: '-' | append: forloop.index
+              assign checkout_form_id = 'CartDrawerCheckout-' | append: section.id
               assign line_on_sale = false
               if item.original_price > item.final_price
                 assign line_on_sale = true
@@ -137,7 +138,7 @@
                 {%- endif -%}
               </div>
 
-              <cart-remove-button class="cart-drawer-line__remove" data-line="{{ forloop.index }}">
+              <cart-remove-button class="cart-drawer-line__remove" data-key="{{ item.key }}">
                 <button
                   type="button"
                   class="btn-icon cart-drawer-line__remove-btn"
@@ -180,9 +181,17 @@
               </div>
 
               <div class="cart-drawer-line__controls">
-                <cart-line-qty data-line="{{ forloop.index }}">
+                {%- comment -%}
+                  name/form associate the input with the checkout form below, so a
+                  checkout tap inside the AJAX debounce window still submits the
+                  current quantities natively (same updates[] convention as the
+                  cart page form).
+                {%- endcomment -%}
+                <cart-line-qty data-key="{{ item.key }}">
                   {% render 'quantity-input',
                     id: qty_id,
+                    name: 'updates[]',
+                    form: checkout_form_id,
                     line: forloop.index,
                     value: item.quantity,
                     max: line_max,
@@ -215,6 +224,7 @@
                 class="field__textarea"
                 name="note"
                 rows="3"
+                form="CartDrawerCheckout-{{ section.id }}"
                 data-cart-note
                 placeholder="{{ 'cart.general.note_placeholder' | t }}"
               >{{ cart.note }}</textarea>
@@ -245,7 +255,7 @@
           </p>
         {%- endif -%}
 
-        <form action="{{ routes.cart_url }}" method="post" class="cart-drawer__actions">
+        <form action="{{ routes.cart_url }}" method="post" id="CartDrawerCheckout-{{ section.id }}" class="cart-drawer__actions">
           <button type="submit" name="checkout" class="btn btn--lg btn--full">
             {{ 'cart.general.checkout' | t }}
             {% render 'icon', name: 'arrow-right', size: 20, class: 'icon--dir' %}

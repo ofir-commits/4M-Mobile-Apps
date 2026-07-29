@@ -176,6 +176,13 @@
   min-inline-size: 0;
 }
 
+/* .chip (base.css) sets white-space: nowrap; on the narrowest rail tiles a
+   3-digit count pill would paint past the tile edge, so let it wrap here. */
+.category-rail__count {
+  max-inline-size: 100%;
+  white-space: normal;
+}
+
 .category-rail__title {
   display: -webkit-box;
   -webkit-line-clamp: 2;

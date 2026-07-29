@@ -6,6 +6,8 @@
   Params:
     id            {String}  input id, so an external <label for> can reach it
     name          {String}  input name (default "quantity")
+    form          {String}  id of a form to associate the input with (form attribute),
+                            for inputs that live outside the submitted form
     value         {Number}  starting value (default 1)
     min           {Number}  minimum (default 1)
     max           {Number}  maximum — omit for unlimited
@@ -34,6 +36,7 @@
     class="qty__input"
     {% if id %}id="{{ id }}"{% endif %}
     name="{{ input_name }}"
+    {% if form %}form="{{ form }}"{% endif %}
     value="{{ qty_value }}"
     min="{{ qty_min }}"
     {% if max %}max="{{ max }}"{% endif %}

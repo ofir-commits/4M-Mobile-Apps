@@ -13,19 +13,25 @@
   assign show_images = section.settings.show_images
   assign hide_empty = section.settings.hide_empty
 
+  comment
+    tile_sizes must track the actual column count: grid--2-desktop and grid--3
+    are 2/3-across from 750px, so the 22vw default badly undersizes their tiles.
+    650px/430px are the tile widths at the 1400px page-width cap.
+  endcomment
   assign columns = section.settings.columns | default: 4
+  assign tile_sizes = '(min-width: 1100px) 22vw, (min-width: 750px) 30vw, 46vw'
   case columns
     when 2
       assign grid_class = 'grid--2-desktop'
+      assign tile_sizes = '(min-width: 1400px) 650px, 46vw'
     when 3
       assign grid_class = 'grid--3'
+      assign tile_sizes = '(min-width: 1400px) 430px, (min-width: 750px) 30vw, 46vw'
     when 5
       assign grid_class = 'grid--5'
     else
       assign grid_class = 'grid--4'
   endcase
-
-  assign tile_sizes = '(min-width: 1100px) 22vw, (min-width: 750px) 30vw, 46vw'
 -%}
 
 <section class="section section--tight collection-index" id="CollectionIndexTop">
@@ -110,7 +116,9 @@
                       srcset="
                         {{ tile_image | image_url: width: 300 }} 300w,
                         {{ tile_image | image_url: width: 450 }} 450w,
-                        {{ tile_image | image_url: width: 600 }} 600w
+                        {{ tile_image | image_url: width: 600 }} 600w,
+                        {{ tile_image | image_url: width: 900 }} 900w,
+                        {{ tile_image | image_url: width: 1300 }} 1300w
                       "
                       src="{{ tile_image | image_url: width: 450 }}"
                       sizes="{{ tile_sizes }}"

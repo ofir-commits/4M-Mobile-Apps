@@ -131,8 +131,15 @@
     function show(i) {
       index = i;
       items.forEach(function (item, n) {
-        item.classList.toggle('is-active', n === i);
-        item.setAttribute('aria-hidden', n === i ? 'false' : 'true');
+        var active = n === i;
+        item.classList.toggle('is-active', active);
+        item.setAttribute('aria-hidden', active ? 'false' : 'true');
+        /* Hidden slides fade out with opacity only, which leaves their links in
+           the tab order — keep focusability in sync with the active slide. */
+        item.querySelectorAll('a[href]').forEach(function (a) {
+          if (active) a.removeAttribute('tabindex');
+          else a.setAttribute('tabindex', '-1');
+        });
       });
     }
 
@@ -505,7 +512,19 @@
         for (var i = 0; i < dropdowns.length; i++) {
           if (dropdowns[i].open) openCount++;
         }
-        if (item.open) closeOthers(item);
+        if (item.open) {
+          closeOthers(item);
+          /* The row wraps at 990-1400px, so the CSS nth-last-child guard misses
+             flyouts on items that end the first line. Measure every open path
+             (hover, focus, native tap) with the override cleared to avoid
+             measuring an already-flipped panel. */
+          var panel = item.querySelector('.site-nav__panel--flyout');
+          if (panel) {
+            panel.classList.remove('is-edge');
+            var r = panel.getBoundingClientRect();
+            panel.classList.toggle('is-edge', r.left < 0 || r.right > document.documentElement.clientWidth);
+          }
+        }
       });
 
       if (hoverCapable) {

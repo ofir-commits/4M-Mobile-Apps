@@ -730,6 +730,18 @@ summary::-webkit-details-marker { display: none; }
   align-items: flex-start;
   gap: 0.35rem;
   pointer-events: none;
+  /* Stop short of the importer seal in the opposite corner:
+     0.6rem inset + 52px seal + 0.6rem inset. */
+  max-inline-size: calc(100% - 4.6rem);
+}
+
+/* Long merchant tag labels truncate instead of running under the seal.
+   display: block because text-overflow is inert on the badge's inline-flex box. */
+.product-card__badges .badge {
+  display: block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Official-importer seal (snippets/vendor-badge.liquid). The seal artwork is
@@ -979,6 +991,14 @@ summary::-webkit-details-marker { display: none; }
 .field__input::placeholder, .field__textarea::placeholder,
 .input::placeholder { color: var(--color-text-muted); opacity: 0.8; }
 
+/* Email/phone inputs carry dir="ltr" so the value reads left-to-right, but
+   direction also decides where text STARTS — left, while the Hebrew fields
+   beside them start at the right. Pull the text back to the far edge (`end`
+   resolves to right inside an LTR element) so every field in a form starts on
+   the same side. Scoped to .field so the quick-order SKU input, which wants
+   text-align: start, is left alone. */
+.field .field__input[dir="ltr"] { text-align: end; }
+
 .select-wrap { position: relative; }
 .select-wrap .icon-chevron {
   position: absolute;
@@ -1092,6 +1112,12 @@ summary::-webkit-details-marker { display: none; }
   transition: opacity var(--duration-base) ease;
 }
 .overlay.is-open { opacity: 1; pointer-events: auto; }
+
+/* global.js toggles this on <body> while a drawer is open so the page behind
+   can't scroll. The html rule hardens the lock for iOS Safari, where locking
+   body alone is unreliable (harmless where :has() is unsupported). */
+body.scroll-locked { overflow: hidden; }
+html:has(body.scroll-locked) { overflow: hidden; }
 
 .drawer {
   position: fixed;
@@ -1498,7 +1524,7 @@ summary::-webkit-details-marker { display: none; }
      hiding only the header inside it would print a blank band that tall. */
   .site-header-wrapper,
   .site-header,
-  .site-footer,
+  .footer,
   .contact-dock,
   .drawer,
   .overlay,

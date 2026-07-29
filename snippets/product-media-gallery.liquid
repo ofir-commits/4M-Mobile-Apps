@@ -41,6 +41,19 @@
   assign zoom_id = 'ProductZoom-' | append: section_id
   assign part = part | default: 'gallery'
 
+  # The overlay only holds images, so its counter and arrows must count
+  # images — using media_count would show "1 / 2" with dead arrows on a
+  # one-image-plus-video product.
+  assign zoom_images = product.media | where: 'media_type', 'image'
+  assign image_count = zoom_images.size
+  assign zoom_index = 1
+  for m in zoom_images
+    if m.id == featured_media.id
+      assign zoom_index = forloop.index
+      break
+    endif
+  endfor
+
   assign zoom_enabled = true
   if enable_zoom == false
     assign zoom_enabled = false
@@ -76,9 +89,9 @@
     >
       <div class="modal__content product-zoom__content">
         <div class="product-zoom__bar">
-          {%- if media_count > 1 -%}
+          {%- if image_count > 1 -%}
             <span class="product-zoom__counter" dir="ltr" aria-hidden="true">
-              <span data-zoom-counter>{{ active_index }}</span> / {{ media_count }}
+              <span data-zoom-counter>{{ zoom_index }}</span> / {{ image_count }}
             </span>
           {%- else -%}
             <span></span>
@@ -127,7 +140,7 @@
             {%- endif -%}
           {%- endfor -%}
 
-          {%- if media_count > 1 -%}
+          {%- if image_count > 1 -%}
             <div class="product-zoom__nav">
               <button
                 type="button"

@@ -8,9 +8,12 @@
   Params:
     product   {Object}  product — price-range aware ("מ־" prefix when variants differ)
     variant   {Object}  a specific variant (takes precedence over product)
-    large     {Boolean} product-page typography (.price--large)
-    hide_save {Boolean} suppress the "חיסכון" pill (compact contexts)
-    class     {String}  extra classes
+    large      {Boolean} product-page typography (.price--large)
+    hide_save  {Boolean} suppress the "חיסכון" pill (compact contexts)
+    force_call {Boolean} always render the "call for price" block, regardless
+                         of the target's price (JS swap template on the
+                         product page)
+    class      {String}  extra classes
 {%- endcomment -%}
 {%- liquid
   assign target = variant | default: product
@@ -49,7 +52,7 @@
     the cheapest variant is unpriced keep their real "from" price.
   endcomment
   assign call_for_price = false
-  if price == 0
+  if price == 0 or force_call
     assign call_for_price = true
     if show_from and product.price_max > 0
       assign call_for_price = false

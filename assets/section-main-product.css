@@ -436,8 +436,12 @@
 }
 
 /* Official-importer seal over the gallery corner. The wrapper needs its own
-   positioning context on mobile (desktop already makes it sticky). */
-.product-layout__media { position: relative; }
+   positioning context on mobile only (desktop already makes it sticky, and an
+   unconditional `relative` would override that sticky and leave its
+   inset-block-start offset applied). */
+@media (max-width: 989.98px) {
+  .product-layout__media { position: relative; }
+}
 
 .product-page__importer {
   position: absolute;

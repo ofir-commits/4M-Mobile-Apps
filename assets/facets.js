@@ -121,6 +121,8 @@
     // Remember UI state that the server render would reset.
     var drawer = document.getElementById(DRAWER_ID);
     var drawerWasOpen = !!(drawer && drawer.classList.contains('is-open'));
+    var drawerBody = drawer ? drawer.querySelector('.drawer__body') : null;
+    var drawerScroll = drawerBody ? drawerBody.scrollTop : 0;
 
     var openFacets = [];
     container.querySelectorAll('details[data-facet]').forEach(function (details) {
@@ -163,8 +165,12 @@
         freshDrawer.style.transition = '';
         if (window.ShiloDrawers) window.ShiloDrawers.activeDrawer = freshDrawer;
         if (window.trapFocus) window.trapFocus(freshDrawer);
+        // The swap rebuilt the drawer's scroller — put the shopper back where they were.
+        var freshBody = freshDrawer.querySelector('.drawer__body');
+        if (freshBody) freshBody.scrollTop = drawerScroll;
       }
     }
+    syncDrawerA11y();
 
     // Restore focus to the control the user was interacting with.
     if (focusMemo) {
@@ -179,7 +185,14 @@
         });
         if (!target && candidates.length) target = candidates[0];
       }
-      if (target) target.focus({ preventScroll: true });
+      if (target) {
+        target.focus({ preventScroll: true });
+        // The swap replaced the input with the server-rendered value from the
+        // *fetched* URL; put back what the shopper had typed at swap time.
+        if (target.matches('[data-price-input]') && target.value !== focusMemo.value) {
+          target.value = focusMemo.value;
+        }
+      }
     }
 
     // Reveal-on-scroll elements arrive without the observer — show them.
@@ -270,6 +283,30 @@
     params.delete('section_id');
     renderPage(params, { updateHistory: false, force: true });
   });
+
+  /* ---------- Drawer ARIA: dialog on mobile, plain sidebar on desktop ----------
+     The server always renders #FacetsDrawer as a closed dialog (aria-hidden="true"),
+     but at >=990px CSS turns it into a static, always-visible sidebar whose
+     controls stay keyboard-focusable — so the dialog ARIA must come off there
+     or screen readers never see the filters. */
+  var desktopQuery = window.matchMedia(DESKTOP);
+
+  function syncDrawerA11y() {
+    var drawer = document.getElementById(DRAWER_ID);
+    if (!drawer) return;
+    if (desktopQuery.matches) {
+      drawer.removeAttribute('aria-hidden');
+      drawer.removeAttribute('role');
+      drawer.removeAttribute('aria-modal');
+    } else {
+      drawer.setAttribute('role', 'dialog');
+      drawer.setAttribute('aria-modal', 'true');
+      drawer.setAttribute('aria-hidden', drawer.classList.contains('is-open') ? 'false' : 'true');
+    }
+  }
+
+  if (desktopQuery.addEventListener) desktopQuery.addEventListener('change', syncDrawerA11y);
+  else if (desktopQuery.addListener) desktopQuery.addListener(syncDrawerA11y); // iOS Safari <14
 
   /* ---------- Desktop: open all facet groups ---------- */
   function openDesktopFacets(scope) {
@@ -369,6 +406,7 @@
     lastQuery = initial.toString();
 
     openDesktopFacets(document);
+    syncDrawerA11y();
     initFacetLists(document);
     initCollapsibleDesc();
   }
@@ -381,6 +419,7 @@
 
   document.addEventListener('shopify:section:load', function () {
     openDesktopFacets(document);
+    syncDrawerA11y();
     initFacetLists(document);
     initCollapsibleDesc();
   });

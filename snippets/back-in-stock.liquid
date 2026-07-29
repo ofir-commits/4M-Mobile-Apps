@@ -46,12 +46,12 @@
         <input type="hidden" name="contact[נושא]" value="בקשת עדכון חזרה למלאי">
         <input type="hidden" name="contact[מוצר]" value="{{ product.title | escape }}">
         {%- if target.title != 'Default Title' -%}
-          <input type="hidden" name="contact[וריאנט]" value="{{ target.title | escape }}">
+          <input type="hidden" name="contact[וריאנט]" value="{{ target.title | escape }}" data-bis-variant-title>
         {%- endif -%}
         {%- if target.sku != blank -%}
-          <input type="hidden" name="contact[מקט]" value="{{ target.sku | escape }}">
+          <input type="hidden" name="contact[מקט]" value="{{ target.sku | escape }}" data-bis-sku>
         {%- endif -%}
-        <input type="hidden" name="contact[קישור]" value="{{ shop.url }}{{ product.url }}?variant={{ target.id }}">
+        <input type="hidden" name="contact[קישור]" value="{{ shop.url }}{{ product.url }}?variant={{ target.id }}" data-bis-link>
 
         <div class="back-in-stock__row">
           <label class="visually-hidden" for="{{ form_id }}-email">כתובת אימייל</label>
@@ -86,7 +86,8 @@
             if wa contains '?'
               assign wa_link = wa
             else
-              assign wa_link = wa | append: '?text=' | append: wa_message | url_encode
+              assign wa_query = wa_message | url_encode
+              assign wa_link = wa | append: '?text=' | append: wa_query
             endif
           -%}
           <p class="back-in-stock__alt text-meta">

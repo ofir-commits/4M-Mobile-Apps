@@ -54,17 +54,9 @@
 }
 
 /* The phone and email inputs carry dir="ltr" so a number or an address reads
-   left-to-right instead of being reordered by the RTL context. But direction also
-   decides where text STARTS, so those two fields began at their left edge while
-   the Hebrew name and message fields began at the right - four fields in a column
-   with two of them starting on the opposite side, which is half of why the form
-   looked crooked. (The other half was the row margin, fixed in base.css.)
-   Keep the box LTR for the value's sake and pull the text back to the field's far
-   edge, so all four fields start on the same side. `end` resolves to right inside
-   an LTR element, which is exactly the edge the Hebrew fields use. */
-.contact-form .field__input[dir="ltr"] {
-  text-align: end;
-}
+   left-to-right; base.css re-aligns their text to the far edge (`text-align: end`
+   on .field .field__input[dir="ltr"]) so they start on the same side as the
+   Hebrew fields. */
 
 .contact-form .form__success,
 .contact-form .errors { margin-block-end: 1.25rem; }
@@ -84,6 +76,7 @@
 
 @media (min-width: 990px) {
   .contact-card {
+    position: sticky;
     /* section-header.js now publishes the measured COMPRESSED header height as
        --sticky-header-height on :root, so this resolves to the real value on every
        page instead of always taking the fallback. Compressed is the right one: the

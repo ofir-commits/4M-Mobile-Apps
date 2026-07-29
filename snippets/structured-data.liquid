@@ -130,11 +130,10 @@
             "description": {{ product.description | strip_html | truncate: 900 | json }},
           {%- endif -%}
           {%- if product.featured_media -%}
+            {%- assign sd_images = product.media | where: 'media_type', 'image' -%}
             "image": [
-              {%- for media in product.media limit: 5 -%}
-                {%- if media.media_type == 'image' -%}
-                  {{ media | image_url: width: 1200 | prepend: 'https:' | json }}{%- unless forloop.last -%},{%- endunless -%}
-                {%- endif -%}
+              {%- for media in sd_images limit: 5 -%}
+                {{ media | image_url: width: 1200 | prepend: 'https:' | json }}{%- unless forloop.last -%},{%- endunless -%}
               {%- endfor -%}
             ],
           {%- endif -%}

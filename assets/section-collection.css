@@ -684,6 +684,9 @@ details[open] > .facet__summary .facet__chevron { transform: rotate(180deg); }
   position: relative;
   flex: 1;
   min-inline-size: 0;
+  /* Match the input's dir="ltr" so the ₪ resolves to the left, over the
+     input's 2rem padding-left instead of colliding with digits on the right. */
+  direction: ltr;
 }
 
 .facet-price__currency {

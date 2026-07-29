@@ -40,13 +40,17 @@
   min-inline-size: 0;
   text-align: center;
   opacity: 0;
+  /* visibility keeps hidden slides out of the tab order; transitioning it too
+     lets the outgoing slide stay visible through the crossfade. */
+  visibility: hidden;
   transform: translateY(4px);
-  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out), visibility var(--duration-base) var(--ease-out);
   pointer-events: none;
 }
 
 .announcement-bar__item.is-active {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
 }
@@ -220,7 +224,9 @@ a.announcement-bar__text:hover {
   overflow: hidden;
 }
 
-.site-header.is-stuck .site-header__util { block-size: 0; }
+/* visibility drops the collapsed rows' links out of the tab order — height 0 +
+   overflow hidden alone would leave them keyboard-focusable while invisible. */
+.site-header.is-stuck .site-header__util { block-size: 0; visibility: hidden; }
 
 .site-header__util-inner {
   display: flex;
@@ -682,6 +688,14 @@ details[open] > .site-nav__link .icon-chevron { transform: rotate(180deg); }
   inset-inline-end: 0;
 }
 
+/* JS-applied when a measured flyout overflows the viewport — the nth-last-child
+   guard above only covers the DOM-last items, but the row wraps at 990-1400px,
+   so the items nearest the edge can be mid-list (end of the first line). */
+.site-nav__panel--flyout.is-edge {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
 .site-nav__list {
   display: flex;
   flex-direction: column;
@@ -1103,6 +1117,9 @@ details[open] > .menu-drawer__toggle .icon-chevron { transform: rotate(180deg); 
     border-block-end-width: 0;
     overflow: hidden;
     pointer-events: none;
+    /* keep the hidden summaries/panel links out of the tab order — see the
+       matching note on .site-header__util. */
+    visibility: hidden;
   }
 }
 

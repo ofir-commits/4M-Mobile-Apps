@@ -14,6 +14,13 @@
     e.preventDefault();
     const name = trigger.getAttribute('data-auth-show');
     wrap.setAttribute('data-active-panel', name);
+    /* Clear a stale fragment (e.g. #recover set by the pre-JS anchor fallback):
+       the CSS :target rules would otherwise keep the recover panel open. A real
+       fragment navigation is required — history.replaceState does not recompute
+       the document's :target element. */
+    if (window.location.hash && window.location.hash !== '#' + name) {
+      window.location.replace('#' + name);
+    }
     const panel = wrap.querySelector('[data-auth-panel="' + name + '"]');
     panel?.querySelector('input:not([type="hidden"])')?.focus({ preventScroll: false });
   });

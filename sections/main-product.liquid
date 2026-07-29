@@ -184,17 +184,21 @@
           {%- comment -%}
             A slice of this catalogue is published without a price. Offering
             "add to cart" on a ₪0 item hands it over for free, so unpriced
-            products get a quote request instead of a buy button.
+            products get a quote request instead of a buy button. Both blocks
+            render with the inactive one hidden, so section-main-product.js can
+            swap them per variant on mixed-price products.
           {%- endcomment -%}
-          {%- if current_variant.price == 0 -%}
+          <div data-request-price-wrap {% unless current_variant.price == 0 %}hidden{% endunless %}>
             {% render 'request-price', product: product, variant: current_variant %}
-          {%- else -%}
+          </div>
+          <div data-buy-buttons-wrap {% if current_variant.price == 0 %}hidden{% endif %}>
             {% render 'buy-buttons',
               product: product,
               section_id: section.id,
               sticky: section.settings.enable_sticky_atc
             %}
-          {%- endif -%}
+          </div>
+          <template data-call-price-template>{% render 'price', product: product, variant: current_variant, large: true, force_call: true %}</template>
 
           {% render 'back-in-stock', product: product, variant: current_variant %}
 

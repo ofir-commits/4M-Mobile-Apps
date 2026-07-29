@@ -7,7 +7,156 @@
   toggled by section-customers.js via data-address-toggle; the country/province
   pair keeps Shopify's AddressCountry_/AddressProvince_/AddressProvinceContainer_
   id contract so shopify_common.js can drive it.
+
+  Each form is captured before its panel is emitted (same pattern as
+  main-login.liquid): a rejected save re-renders the page with form.errors,
+  and without the flag set during capture the panel would come back with its
+  unconditional `hidden`, swallowing the errors and the typed values.
 {%- endcomment -%}
+
+{%- assign new_form_has_errors = false -%}
+{%- capture new_form_html -%}
+  {%- form 'customer_address', customer.new_address, class: 'customer-form', aria-labelledby: 'AddressNewHeading' -%}
+    {%- if form.errors -%}
+      {%- assign new_form_has_errors = true -%}
+      <div class="errors" role="alert" tabindex="-1">
+        <ul>
+          {%- for field in form.errors -%}
+            <li>{{ form.errors.translated_fields[field] }} - {{ form.errors.messages[field] }}</li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    <div class="form__row">
+      <div class="field">
+        <label class="field__label" for="AddressFirstName_new">{{ 'customer.addresses.first_name' | t }}</label>
+        <input class="field__input" type="text" id="AddressFirstName_new" name="address[first_name]" value="{{ form.first_name }}" autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label class="field__label" for="AddressLastName_new">{{ 'customer.addresses.last_name' | t }}</label>
+        <input class="field__input" type="text" id="AddressLastName_new" name="address[last_name]" value="{{ form.last_name }}" autocomplete="family-name">
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="AddressCompany_new">{{ 'customer.addresses.company' | t }}</label>
+      <input class="field__input" type="text" id="AddressCompany_new" name="address[company]" value="{{ form.company }}" autocomplete="organization">
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="AddressAddress1_new">{{ 'customer.addresses.address1' | t }}</label>
+      <input class="field__input" type="text" id="AddressAddress1_new" name="address[address1]" value="{{ form.address1 }}" autocomplete="address-line1">
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="AddressAddress2_new">{{ 'customer.addresses.address2' | t }}</label>
+      <input class="field__input" type="text" id="AddressAddress2_new" name="address[address2]" value="{{ form.address2 }}" autocomplete="address-line2">
+    </div>
+
+    <div class="form__row">
+      <div class="field">
+        <label class="field__label" for="AddressCity_new">{{ 'customer.addresses.city' | t }}</label>
+        <input class="field__input" type="text" id="AddressCity_new" name="address[city]" value="{{ form.city }}" autocomplete="address-level2">
+      </div>
+      <div class="field">
+        <label class="field__label" for="AddressZip_new">{{ 'customer.addresses.zip' | t }}</label>
+        <input class="field__input" type="text" id="AddressZip_new" name="address[zip]" value="{{ form.zip }}" autocomplete="postal-code" autocapitalize="characters">
+      </div>
+    </div>
+
+    <div class="form__row">
+      <div class="field">
+        <label class="field__label" for="AddressCountry_new">{{ 'customer.addresses.country' | t }}</label>
+        <div class="select-wrap">
+          {%- comment -%}
+            DO NOT translate the value attribute or data-default: Shopify matches
+            the submitted address country against the ENGLISH country name, so
+            "ישראל" as a value silently breaks saving the address and, later,
+            checkout. Only the text between the tags is the shopper-facing label.
+
+            This replaces all_country_option_tags, which was the single
+            largest block of raw English in the theme: ~250 Shopify-generated
+            <option> elements whose labels cannot be reached from the locale
+            file, each carrying a data-provinces JSON whose province names are
+            English in every locale. This store ships from קרית ענבים to Israel
+            only, so the list is not just untranslatable, it is unused. If
+            international shipping is ever added, build the list from a Hebrew
+            country map — do not restore all_country_option_tags.
+          {%- endcomment -%}
+          <select
+            class="field__select"
+            id="AddressCountry_new"
+            name="address[country]"
+            data-country-select
+            data-form-id="new"
+            data-default="{{ form.country | default: 'Israel' }}"
+            autocomplete="country"
+          >
+            {%- comment -%}
+              Israel is the only destination, so it is the only option offered.
+              But a select whose value has no matching option submits its FIRST
+              option, and this one was unconditionally `selected` - so any
+              address saved earlier with a different country would have been
+              silently rewritten to Israel the moment the customer opened and
+              re-saved it. That is data loss with no error. Emit the stored
+              country as a second, pre-selected option whenever it differs, so
+              re-saving preserves it and only a deliberate change moves it.
+            {%- endcomment -%}
+            {%- assign addr_country = form.country | default: 'Israel' -%}
+            <option value="Israel"{% if addr_country == 'Israel' %} selected{% endif %} data-provinces="[]">{{ 'customer.addresses.country_israel' | t }}</option>
+            {%- if addr_country != 'Israel' -%}
+              <option value="{{ addr_country | escape }}" selected data-provinces="[]">{{ addr_country | escape }}</option>
+            {%- endif -%}
+          </select>
+          {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
+        </div>
+      </div>
+      {%- comment -%}
+        Israel has no provinces in Shopify's address schema, so this field can
+        never be populated. The inline display:none stays because Shopify's
+        CountryProvinceSelector drives it through style.display; hidden covers
+        the no-JS case.
+      {%- endcomment -%}
+      <div class="field" id="AddressProvinceContainer_new" style="display: none;" hidden>
+        <label class="field__label" for="AddressProvince_new">{{ 'customer.addresses.province' | t }}</label>
+        <div class="select-wrap">
+          <select
+            class="field__select"
+            id="AddressProvince_new"
+            name="address[province]"
+            data-default="{{ form.province }}"
+            autocomplete="address-level1"
+          ></select>
+          {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="AddressPhone_new">{{ 'customer.addresses.phone' | t }}</label>
+      <input class="field__input" type="tel" id="AddressPhone_new" name="address[phone]" value="{{ form.phone }}" autocomplete="tel" pattern="[0-9\-+\(\) ]*" dir="ltr">
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" class="checkbox" id="AddressDefault_new" name="address[default]" value="1">
+      <label class="checkbox-label" for="AddressDefault_new">{{ 'customer.addresses.set_default' | t }}</label>
+    </div>
+
+    <div class="address-form__actions">
+      <button type="submit" class="btn">{{ 'customer.addresses.add' | t }}</button>
+      <button
+        type="button"
+        class="btn btn--ghost"
+        data-address-toggle="AddressFormNew"
+        aria-expanded="true"
+        aria-controls="AddressFormNew"
+      >
+        {{ 'customer.addresses.cancel' | t }}
+      </button>
+    </div>
+  {%- endform -%}
+{%- endcapture -%}
 
 <section class="section account-section">
   <div class="container">
@@ -36,7 +185,7 @@
           type="button"
           class="btn btn--sm"
           data-address-toggle="AddressFormNew"
-          aria-expanded="false"
+          aria-expanded="{% if new_form_has_errors %}true{% else %}false{% endif %}"
           aria-controls="AddressFormNew"
         >
           {% render 'icon', name: 'plus', size: 17 %}
@@ -50,148 +199,9 @@
     </header>
 
     {%- # ---------- New address form ---------- -%}
-    <div class="panel addresses-form" id="AddressFormNew" hidden>
+    <div class="panel addresses-form" id="AddressFormNew" {% unless new_form_has_errors %}hidden{% endunless %}>
       <h2 class="addresses-form__title h3" id="AddressNewHeading">{{ 'customer.addresses.add_new' | t }}</h2>
-
-      {%- form 'customer_address', customer.new_address, class: 'customer-form', aria-labelledby: 'AddressNewHeading' -%}
-        {%- if form.errors -%}
-          <div class="errors" role="alert" tabindex="-1">
-            <ul>
-              {%- for field in form.errors -%}
-                <li>{{ form.errors.translated_fields[field] }} - {{ form.errors.messages[field] }}</li>
-              {%- endfor -%}
-            </ul>
-          </div>
-        {%- endif -%}
-
-        <div class="form__row">
-          <div class="field">
-            <label class="field__label" for="AddressFirstName_new">{{ 'customer.addresses.first_name' | t }}</label>
-            <input class="field__input" type="text" id="AddressFirstName_new" name="address[first_name]" value="{{ form.first_name }}" autocomplete="given-name">
-          </div>
-          <div class="field">
-            <label class="field__label" for="AddressLastName_new">{{ 'customer.addresses.last_name' | t }}</label>
-            <input class="field__input" type="text" id="AddressLastName_new" name="address[last_name]" value="{{ form.last_name }}" autocomplete="family-name">
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field__label" for="AddressCompany_new">{{ 'customer.addresses.company' | t }}</label>
-          <input class="field__input" type="text" id="AddressCompany_new" name="address[company]" value="{{ form.company }}" autocomplete="organization">
-        </div>
-
-        <div class="field">
-          <label class="field__label" for="AddressAddress1_new">{{ 'customer.addresses.address1' | t }}</label>
-          <input class="field__input" type="text" id="AddressAddress1_new" name="address[address1]" value="{{ form.address1 }}" autocomplete="address-line1">
-        </div>
-
-        <div class="field">
-          <label class="field__label" for="AddressAddress2_new">{{ 'customer.addresses.address2' | t }}</label>
-          <input class="field__input" type="text" id="AddressAddress2_new" name="address[address2]" value="{{ form.address2 }}" autocomplete="address-line2">
-        </div>
-
-        <div class="form__row">
-          <div class="field">
-            <label class="field__label" for="AddressCity_new">{{ 'customer.addresses.city' | t }}</label>
-            <input class="field__input" type="text" id="AddressCity_new" name="address[city]" value="{{ form.city }}" autocomplete="address-level2">
-          </div>
-          <div class="field">
-            <label class="field__label" for="AddressZip_new">{{ 'customer.addresses.zip' | t }}</label>
-            <input class="field__input" type="text" id="AddressZip_new" name="address[zip]" value="{{ form.zip }}" autocomplete="postal-code" autocapitalize="characters">
-          </div>
-        </div>
-
-        <div class="form__row">
-          <div class="field">
-            <label class="field__label" for="AddressCountry_new">{{ 'customer.addresses.country' | t }}</label>
-            <div class="select-wrap">
-              {%- comment -%}
-                DO NOT translate the value attribute or data-default: Shopify matches
-                the submitted address country against the ENGLISH country name, so
-                "ישראל" as a value silently breaks saving the address and, later,
-                checkout. Only the text between the tags is the shopper-facing label.
-
-                This replaces all_country_option_tags, which was the single
-                largest block of raw English in the theme: ~250 Shopify-generated
-                <option> elements whose labels cannot be reached from the locale
-                file, each carrying a data-provinces JSON whose province names are
-                English in every locale. This store ships from קרית ענבים to Israel
-                only, so the list is not just untranslatable, it is unused. If
-                international shipping is ever added, build the list from a Hebrew
-                country map — do not restore all_country_option_tags.
-              {%- endcomment -%}
-              <select
-                class="field__select"
-                id="AddressCountry_new"
-                name="address[country]"
-                data-country-select
-                data-form-id="new"
-                data-default="{{ form.country | default: 'Israel' }}"
-                autocomplete="country"
-              >
-                {%- comment -%}
-                  Israel is the only destination, so it is the only option offered.
-                  But a select whose value has no matching option submits its FIRST
-                  option, and this one was unconditionally `selected` - so any
-                  address saved earlier with a different country would have been
-                  silently rewritten to Israel the moment the customer opened and
-                  re-saved it. That is data loss with no error. Emit the stored
-                  country as a second, pre-selected option whenever it differs, so
-                  re-saving preserves it and only a deliberate change moves it.
-                {%- endcomment -%}
-                {%- assign addr_country = form.country | default: 'Israel' -%}
-                <option value="Israel"{% if addr_country == 'Israel' %} selected{% endif %} data-provinces="[]">{{ 'customer.addresses.country_israel' | t }}</option>
-                {%- if addr_country != 'Israel' -%}
-                  <option value="{{ addr_country | escape }}" selected data-provinces="[]">{{ addr_country | escape }}</option>
-                {%- endif -%}
-              </select>
-              {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
-            </div>
-          </div>
-          {%- comment -%}
-            Israel has no provinces in Shopify's address schema, so this field can
-            never be populated. The inline display:none stays because Shopify's
-            CountryProvinceSelector drives it through style.display; hidden covers
-            the no-JS case.
-          {%- endcomment -%}
-          <div class="field" id="AddressProvinceContainer_new" style="display: none;" hidden>
-            <label class="field__label" for="AddressProvince_new">{{ 'customer.addresses.province' | t }}</label>
-            <div class="select-wrap">
-              <select
-                class="field__select"
-                id="AddressProvince_new"
-                name="address[province]"
-                data-default="{{ form.province }}"
-                autocomplete="address-level1"
-              ></select>
-              {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
-            </div>
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field__label" for="AddressPhone_new">{{ 'customer.addresses.phone' | t }}</label>
-          <input class="field__input" type="tel" id="AddressPhone_new" name="address[phone]" value="{{ form.phone }}" autocomplete="tel" pattern="[0-9\-+() ]*" dir="ltr">
-        </div>
-
-        <div class="checkbox-row">
-          <input type="checkbox" class="checkbox" id="AddressDefault_new" name="address[default]" value="1">
-          <label class="checkbox-label" for="AddressDefault_new">{{ 'customer.addresses.set_default' | t }}</label>
-        </div>
-
-        <div class="address-form__actions">
-          <button type="submit" class="btn">{{ 'customer.addresses.add' | t }}</button>
-          <button
-            type="button"
-            class="btn btn--ghost"
-            data-address-toggle="AddressFormNew"
-            aria-expanded="true"
-            aria-controls="AddressFormNew"
-          >
-            {{ 'customer.addresses.cancel' | t }}
-          </button>
-        </div>
-      {%- endform -%}
+      {{ new_form_html }}
     </div>
 
     {%- # ---------- Address cards ---------- -%}
@@ -202,6 +212,145 @@
           {%- if address.id == customer.default_address.id -%}
             {%- assign is_default = true -%}
           {%- endif -%}
+
+          {%- # Captured before the card so the edit toggle and panel can react to form.errors -%}
+          {%- assign edit_heading_id = 'EditAddressHeading_' | append: address.id -%}
+          {%- assign edit_form_has_errors = false -%}
+          {%- capture edit_form_html -%}
+            {%- form 'customer_address', address, class: 'customer-form', aria-labelledby: edit_heading_id -%}
+              {%- if form.errors -%}
+                {%- assign edit_form_has_errors = true -%}
+                <div class="errors" role="alert" tabindex="-1">
+                  <ul>
+                    {%- for field in form.errors -%}
+                      <li>{{ form.errors.translated_fields[field] }} - {{ form.errors.messages[field] }}</li>
+                    {%- endfor -%}
+                  </ul>
+                </div>
+              {%- endif -%}
+
+              <div class="form__row">
+                <div class="field">
+                  <label class="field__label" for="AddressFirstName_{{ form.id }}">{{ 'customer.addresses.first_name' | t }}</label>
+                  <input class="field__input" type="text" id="AddressFirstName_{{ form.id }}" name="address[first_name]" value="{{ form.first_name }}" autocomplete="given-name">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="AddressLastName_{{ form.id }}">{{ 'customer.addresses.last_name' | t }}</label>
+                  <input class="field__input" type="text" id="AddressLastName_{{ form.id }}" name="address[last_name]" value="{{ form.last_name }}" autocomplete="family-name">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="AddressCompany_{{ form.id }}">{{ 'customer.addresses.company' | t }}</label>
+                <input class="field__input" type="text" id="AddressCompany_{{ form.id }}" name="address[company]" value="{{ form.company }}" autocomplete="organization">
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="AddressAddress1_{{ form.id }}">{{ 'customer.addresses.address1' | t }}</label>
+                <input class="field__input" type="text" id="AddressAddress1_{{ form.id }}" name="address[address1]" value="{{ form.address1 }}" autocomplete="address-line1">
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="AddressAddress2_{{ form.id }}">{{ 'customer.addresses.address2' | t }}</label>
+                <input class="field__input" type="text" id="AddressAddress2_{{ form.id }}" name="address[address2]" value="{{ form.address2 }}" autocomplete="address-line2">
+              </div>
+
+              <div class="form__row">
+                <div class="field">
+                  <label class="field__label" for="AddressCity_{{ form.id }}">{{ 'customer.addresses.city' | t }}</label>
+                  <input class="field__input" type="text" id="AddressCity_{{ form.id }}" name="address[city]" value="{{ form.city }}" autocomplete="address-level2">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="AddressZip_{{ form.id }}">{{ 'customer.addresses.zip' | t }}</label>
+                  <input class="field__input" type="text" id="AddressZip_{{ form.id }}" name="address[zip]" value="{{ form.zip }}" autocomplete="postal-code" autocapitalize="characters">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="AddressCountry_{{ form.id }}">{{ 'customer.addresses.country' | t }}</label>
+                <div class="select-wrap">
+                  {%- comment -%}
+                    Israel-only, English value attribute — see the equivalent block
+                    in the new-address form above for why the value must not be
+                    translated. This form renders once per saved address, so the
+                    ~250 English options were multiplied by the address count.
+                  {%- endcomment -%}
+                  <select
+                    class="field__select"
+                    id="AddressCountry_{{ form.id }}"
+                    name="address[country]"
+                    data-country-select
+                    data-form-id="{{ form.id }}"
+                    data-default="{{ form.country | default: 'Israel' }}"
+                    autocomplete="country"
+                  >
+                    {%- comment -%}
+                      Same guard as the new-address form: this one matters MORE,
+                      because here form.country is a real saved value. An
+                      unconditional `selected` on the only option rewrote any
+                      non-Israel address to Israel on re-save, silently.
+                    {%- endcomment -%}
+                    {%- assign addr_country = form.country | default: 'Israel' -%}
+                    <option value="Israel"{% if addr_country == 'Israel' %} selected{% endif %} data-provinces="[]">
+                      {{- 'customer.addresses.country_israel' | t -}}
+                    </option>
+                    {%- if addr_country != 'Israel' -%}
+                      <option value="{{ addr_country | escape }}" selected data-provinces="[]">
+                        {{- addr_country | escape -}}
+                      </option>
+                    {%- endif -%}
+                  </select>
+                  {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
+                </div>
+              </div>
+
+              <div class="field" id="AddressProvinceContainer_{{ form.id }}" style="display: none;" hidden>
+                <label class="field__label" for="AddressProvince_{{ form.id }}">{{ 'customer.addresses.province' | t }}</label>
+                <div class="select-wrap">
+                  <select
+                    class="field__select"
+                    id="AddressProvince_{{ form.id }}"
+                    name="address[province]"
+                    data-default="{{ form.province }}"
+                    autocomplete="address-level1"
+                  ></select>
+                  {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="AddressPhone_{{ form.id }}">{{ 'customer.addresses.phone' | t }}</label>
+                <input class="field__input" type="tel" id="AddressPhone_{{ form.id }}" name="address[phone]" value="{{ form.phone }}" autocomplete="tel" pattern="[0-9\-+\(\) ]*" dir="ltr">
+              </div>
+
+              <div class="checkbox-row">
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  id="AddressDefault_{{ form.id }}"
+                  name="address[default]"
+                  value="1"
+                  {% if is_default %}checked disabled{% endif %}
+                >
+                <label class="checkbox-label" for="AddressDefault_{{ form.id }}">
+                  {{- 'customer.addresses.set_default' | t -}}
+                </label>
+              </div>
+
+              <div class="address-form__actions">
+                <button type="submit" class="btn btn--sm">{{ 'customer.addresses.update' | t }}</button>
+                <button
+                  type="button"
+                  class="btn btn--ghost btn--sm"
+                  data-address-toggle="EditAddress_{{ address.id }}"
+                  aria-expanded="true"
+                  aria-controls="EditAddress_{{ address.id }}"
+                >
+                  {{ 'customer.addresses.cancel' | t }}
+                </button>
+              </div>
+            {%- endform -%}
+          {%- endcapture -%}
 
           <li class="card address-card{% if is_default %} address-card--default{% endif %}">
             {%- if is_default -%}
@@ -218,7 +367,7 @@
                 type="button"
                 class="btn btn--ghost btn--sm"
                 data-address-toggle="EditAddress_{{ address.id }}"
-                aria-expanded="false"
+                aria-expanded="{% if edit_form_has_errors %}true{% else %}false{% endif %}"
                 aria-controls="EditAddress_{{ address.id }}"
               >
                 {{ 'customer.addresses.edit' | t }}
@@ -238,144 +387,11 @@
             </div>
 
             {%- # ---------- Edit form ---------- -%}
-            {%- assign edit_heading_id = 'EditAddressHeading_' | append: address.id -%}
-            <div class="address-card__edit" id="EditAddress_{{ address.id }}" hidden>
+            <div class="address-card__edit" id="EditAddress_{{ address.id }}" {% unless edit_form_has_errors %}hidden{% endunless %}>
               <h3 class="address-card__edit-title h5" id="{{ edit_heading_id }}">
                 {{ 'customer.addresses.edit_address' | t }}
               </h3>
-
-              {%- form 'customer_address', address, class: 'customer-form', aria-labelledby: edit_heading_id -%}
-                {%- if form.errors -%}
-                  <div class="errors" role="alert" tabindex="-1">
-                    <ul>
-                      {%- for field in form.errors -%}
-                        <li>{{ form.errors.translated_fields[field] }} - {{ form.errors.messages[field] }}</li>
-                      {%- endfor -%}
-                    </ul>
-                  </div>
-                {%- endif -%}
-
-                <div class="form__row">
-                  <div class="field">
-                    <label class="field__label" for="AddressFirstName_{{ form.id }}">{{ 'customer.addresses.first_name' | t }}</label>
-                    <input class="field__input" type="text" id="AddressFirstName_{{ form.id }}" name="address[first_name]" value="{{ form.first_name }}" autocomplete="given-name">
-                  </div>
-                  <div class="field">
-                    <label class="field__label" for="AddressLastName_{{ form.id }}">{{ 'customer.addresses.last_name' | t }}</label>
-                    <input class="field__input" type="text" id="AddressLastName_{{ form.id }}" name="address[last_name]" value="{{ form.last_name }}" autocomplete="family-name">
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label class="field__label" for="AddressCompany_{{ form.id }}">{{ 'customer.addresses.company' | t }}</label>
-                  <input class="field__input" type="text" id="AddressCompany_{{ form.id }}" name="address[company]" value="{{ form.company }}" autocomplete="organization">
-                </div>
-
-                <div class="field">
-                  <label class="field__label" for="AddressAddress1_{{ form.id }}">{{ 'customer.addresses.address1' | t }}</label>
-                  <input class="field__input" type="text" id="AddressAddress1_{{ form.id }}" name="address[address1]" value="{{ form.address1 }}" autocomplete="address-line1">
-                </div>
-
-                <div class="field">
-                  <label class="field__label" for="AddressAddress2_{{ form.id }}">{{ 'customer.addresses.address2' | t }}</label>
-                  <input class="field__input" type="text" id="AddressAddress2_{{ form.id }}" name="address[address2]" value="{{ form.address2 }}" autocomplete="address-line2">
-                </div>
-
-                <div class="form__row">
-                  <div class="field">
-                    <label class="field__label" for="AddressCity_{{ form.id }}">{{ 'customer.addresses.city' | t }}</label>
-                    <input class="field__input" type="text" id="AddressCity_{{ form.id }}" name="address[city]" value="{{ form.city }}" autocomplete="address-level2">
-                  </div>
-                  <div class="field">
-                    <label class="field__label" for="AddressZip_{{ form.id }}">{{ 'customer.addresses.zip' | t }}</label>
-                    <input class="field__input" type="text" id="AddressZip_{{ form.id }}" name="address[zip]" value="{{ form.zip }}" autocomplete="postal-code" autocapitalize="characters">
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label class="field__label" for="AddressCountry_{{ form.id }}">{{ 'customer.addresses.country' | t }}</label>
-                  <div class="select-wrap">
-                    {%- comment -%}
-                      Israel-only, English value attribute — see the equivalent block
-                      in the new-address form above for why the value must not be
-                      translated. This form renders once per saved address, so the
-                      ~250 English options were multiplied by the address count.
-                    {%- endcomment -%}
-                    <select
-                      class="field__select"
-                      id="AddressCountry_{{ form.id }}"
-                      name="address[country]"
-                      data-country-select
-                      data-form-id="{{ form.id }}"
-                      data-default="{{ form.country | default: 'Israel' }}"
-                      autocomplete="country"
-                    >
-                      {%- comment -%}
-                        Same guard as the new-address form: this one matters MORE,
-                        because here form.country is a real saved value. An
-                        unconditional `selected` on the only option rewrote any
-                        non-Israel address to Israel on re-save, silently.
-                      {%- endcomment -%}
-                      {%- assign addr_country = form.country | default: 'Israel' -%}
-                      <option value="Israel"{% if addr_country == 'Israel' %} selected{% endif %} data-provinces="[]">
-                        {{- 'customer.addresses.country_israel' | t -}}
-                      </option>
-                      {%- if addr_country != 'Israel' -%}
-                        <option value="{{ addr_country | escape }}" selected data-provinces="[]">
-                          {{- addr_country | escape -}}
-                        </option>
-                      {%- endif -%}
-                    </select>
-                    {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
-                  </div>
-                </div>
-
-                <div class="field" id="AddressProvinceContainer_{{ form.id }}" style="display: none;" hidden>
-                  <label class="field__label" for="AddressProvince_{{ form.id }}">{{ 'customer.addresses.province' | t }}</label>
-                  <div class="select-wrap">
-                    <select
-                      class="field__select"
-                      id="AddressProvince_{{ form.id }}"
-                      name="address[province]"
-                      data-default="{{ form.province }}"
-                      autocomplete="address-level1"
-                    ></select>
-                    {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label class="field__label" for="AddressPhone_{{ form.id }}">{{ 'customer.addresses.phone' | t }}</label>
-                  <input class="field__input" type="tel" id="AddressPhone_{{ form.id }}" name="address[phone]" value="{{ form.phone }}" autocomplete="tel" pattern="[0-9\-+() ]*" dir="ltr">
-                </div>
-
-                <div class="checkbox-row">
-                  <input
-                    type="checkbox"
-                    class="checkbox"
-                    id="AddressDefault_{{ form.id }}"
-                    name="address[default]"
-                    value="1"
-                    {% if is_default %}checked disabled{% endif %}
-                  >
-                  <label class="checkbox-label" for="AddressDefault_{{ form.id }}">
-                    {{- 'customer.addresses.set_default' | t -}}
-                  </label>
-                </div>
-
-                <div class="address-form__actions">
-                  <button type="submit" class="btn btn--sm">{{ 'customer.addresses.update' | t }}</button>
-                  <button
-                    type="button"
-                    class="btn btn--ghost btn--sm"
-                    data-address-toggle="EditAddress_{{ address.id }}"
-                    aria-expanded="true"
-                    aria-controls="EditAddress_{{ address.id }}"
-                  >
-                    {{ 'customer.addresses.cancel' | t }}
-                  </button>
-                </div>
-              {%- endform -%}
+              {{ edit_form_html }}
             </div>
           </li>
         {%- endfor -%}
@@ -392,7 +408,7 @@
             type="button"
             class="btn"
             data-address-toggle="AddressFormNew"
-            aria-expanded="false"
+            aria-expanded="{% if new_form_has_errors %}true{% else %}false{% endif %}"
             aria-controls="AddressFormNew"
           >
             {% render 'icon', name: 'plus', size: 18 %}

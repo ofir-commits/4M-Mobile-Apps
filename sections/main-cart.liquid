@@ -177,7 +177,7 @@
                   </div>
 
                   <div class="cart-line__controls">
-                    <cart-line-qty class="cart-line__qty" data-line="{{ forloop.index }}">
+                    <cart-line-qty class="cart-line__qty" data-key="{{ item.key }}">
                       {% render 'quantity-input',
                         id: qty_id,
                         name: 'updates[]',
@@ -199,7 +199,7 @@
                     </div>
                   </div>
 
-                  <cart-remove-button class="cart-line__remove" data-line="{{ forloop.index }}">
+                  <cart-remove-button class="cart-line__remove" data-key="{{ item.key }}">
                     <button
                       type="button"
                       class="btn-icon cart-line__remove-btn"

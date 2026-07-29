@@ -76,9 +76,9 @@
 [dir="rtl"] .image-banner { --hero-beam-tilt: -13deg; }
 
 /* ---------- Heights ---------- */
-.image-banner--small { min-block-size: clamp(360px, 46svh, 470px); }
-.image-banner--medium { min-block-size: clamp(450px, 62svh, 600px); }
-.image-banner--large { min-block-size: clamp(540px, 78svh, 760px); }
+.image-banner--small { min-block-size: clamp(360px, 46vh, 470px); min-block-size: clamp(360px, 46svh, 470px); }
+.image-banner--medium { min-block-size: clamp(450px, 62vh, 600px); min-block-size: clamp(450px, 62svh, 600px); }
+.image-banner--large { min-block-size: clamp(540px, 78vh, 760px); min-block-size: clamp(540px, 78svh, 760px); }
 .image-banner--full {
   min-block-size: 100vh;
   min-block-size: 100svh;
