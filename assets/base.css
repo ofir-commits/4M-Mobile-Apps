@@ -751,6 +751,11 @@ summary::-webkit-details-marker { display: none; }
 }
 
 .product-card__quick-add {
+  /* Positioned even in the in-flow (touch/mobile) state: the title anchor's
+     ::after overlay covers the whole card at z-index 1, so the button must sit
+     above it in every context or taps navigate instead of adding to cart. */
+  position: relative;
+  z-index: 3;
   padding: 0 0.7rem 0.7rem;
 }
 

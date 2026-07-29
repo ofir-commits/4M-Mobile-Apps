@@ -314,14 +314,6 @@
   inline-size: 100%;
 }
 
-/* The card's title anchor paints a full-card ::after overlay at z-index 1.
-   base.css lifts quick-add above it only where hover is available, so raise it
-   for touch too — stacking only, no visual change. */
-.collection-products .product-card__quick-add {
-  position: relative;
-  z-index: 3;
-}
-
 .collection-products .product-card__sku {
   font-size: 0.78rem;
   line-height: 1.3;
