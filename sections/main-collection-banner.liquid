@@ -1,0 +1,123 @@
+{{ 'section-collection.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'facets.js' | asset_url }}" defer="defer"></script>
+
+{%- liquid
+  assign show_crumbs = false
+  if settings.show_breadcrumbs and section.settings.show_breadcrumbs
+    assign show_crumbs = true
+  endif
+
+  assign thumb = collection.image | default: collection.featured_image
+  assign has_thumb = false
+  if section.settings.show_image and thumb != blank
+    assign has_thumb = true
+  endif
+-%}
+
+<div class="collection-hero">
+  <div class="container">
+    {%- if show_crumbs -%}
+      <nav class="breadcrumbs collection-hero__crumbs" aria-label="{{ 'general.breadcrumbs.label' | t }}">
+        <a href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">
+          {% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}
+        </span>
+        <a href="{{ routes.collections_url }}">{{ 'general.breadcrumbs.collections' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">
+          {% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}
+        </span>
+        <span class="breadcrumbs__current" aria-current="page">{{ collection.title | escape }}</span>
+      </nav>
+    {%- endif -%}
+
+    <div class="collection-hero__head{% if has_thumb %} collection-hero__head--with-thumb{% endif %}">
+      {%- if has_thumb -%}
+        <div class="collection-hero__thumb media media--square media--contain">
+          <img
+            srcset="
+              {{ thumb | image_url: width: 160 }} 160w,
+              {{ thumb | image_url: width: 240 }} 240w,
+              {{ thumb | image_url: width: 320 }} 320w
+            "
+            src="{{ thumb | image_url: width: 240 }}"
+            sizes="(min-width: 750px) 112px, 76px"
+            alt="{{ thumb.alt | default: collection.title | escape }}"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            width="{{ thumb.width }}"
+            height="{{ thumb.height }}"
+          >
+        </div>
+      {%- endif -%}
+
+      <div class="collection-hero__text">
+        <h1 class="collection-hero__title">{{ collection.title | escape }}</h1>
+
+        {%- if section.settings.show_product_count -%}
+          <p class="collection-hero__count">
+            {{ 'products.facets.product_count' | t: count: collection.all_products_count }}
+          </p>
+        {%- endif -%}
+      </div>
+    </div>
+
+    {%- if section.settings.show_description and collection.description != blank -%}
+      <div class="collection-hero__desc" data-collapsible-desc>
+        <div class="collection-hero__desc-content rte" data-desc-content>
+          {{ collection.description }}
+        </div>
+        <button
+          type="button"
+          class="collection-hero__desc-toggle"
+          data-desc-toggle
+          aria-expanded="false"
+          hidden
+        >
+          <span data-more>{{ 'products.facets.show_more' | t }}</span>
+          <span data-less hidden>{{ 'products.facets.show_less' | t }}</span>
+          {% render 'icon', name: 'chevron-down', size: 16, class: 'collection-hero__desc-chevron' %}
+        </button>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "כותרת קטגוריה",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "כותרת קומפקטית וברורה לעמוד הקטגוריה: נתיב ניווט, שם הקטגוריה, מספר מוצרים ותיאור מתקפל."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_breadcrumbs",
+      "label": "הצגת נתיב ניווט",
+      "info": "מוצג רק אם נתיב הניווט מופעל גם בהגדרות העיצוב הכלליות.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_product_count",
+      "label": "הצגת מספר המוצרים",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_description",
+      "label": "הצגת תיאור הקטגוריה",
+      "info": "תיאור ארוך יקוצר אוטומטית עם כפתור \"הצגת עוד\".",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_image",
+      "label": "הצגת תמונת הקטגוריה",
+      "info": "התמונה מוצגת כתמונה מוקטנת לצד הכותרת. נקבעת בעמוד הקטגוריה בממשק הניהול.",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

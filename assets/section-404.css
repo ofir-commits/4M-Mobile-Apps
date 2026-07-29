@@ -1,0 +1,251 @@
+/* =========================================================
+   Shilo Pro — 404 page (sections/main-404.liquid)
+   v2 "Clarity": a calm, useful dead end — search, departments, a phone number.
+   Tokens and base.css components only — see theme/DESIGN-SYSTEM.md.
+   ========================================================= */
+
+.error-404 { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+
+.error-404__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-inline-size: 620px;
+  margin-inline: auto;
+}
+
+/* ---------- Blueprint mark (replaces the v1 striped digits) ---------- */
+.error-404__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  font-size: calc(clamp(2rem, 1.4rem + 2.4vw, 3rem) * var(--font-heading-scale));
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: var(--color-ink);
+  user-select: none;
+}
+
+.error-404__title { margin-block-start: clamp(1.1rem, 2.5vw, 1.6rem); }
+
+.error-404__text {
+  margin-block-start: 0.85rem;
+  color: var(--color-text-muted);
+  max-inline-size: 46ch;
+}
+
+/* ---------- Search ---------- */
+.error-404__search {
+  inline-size: 100%;
+  max-inline-size: 460px;
+  margin-block-start: clamp(1.35rem, 3vw, 2rem);
+}
+
+.error-404__field {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.error-404__field:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px rgba(var(--color-accent-rgb), 0.15);
+}
+
+.error-404__field-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-inline-start: 1.05rem;
+  color: var(--color-text-muted);
+}
+
+.error-404__input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  min-block-size: 54px;
+  padding-inline: 0.75rem;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  text-align: start;
+}
+
+.error-404__input:focus { outline: none; }
+.error-404__input::placeholder { color: var(--color-text-muted); opacity: 0.85; }
+.error-404__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+.error-404__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 5px;
+  inline-size: 44px;
+  min-block-size: 44px;
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease;
+}
+
+.error-404__submit:hover { background: var(--color-accent-hover); }
+
+/* ---------- Primary actions ---------- */
+.error-404__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-block-start: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+@media (max-width: 479px) {
+  .error-404__actions { flex-direction: column; align-items: stretch; inline-size: 100%; }
+}
+
+/* ---------- Departments ---------- */
+.error-404__depts { margin-block-start: clamp(2.25rem, 5vw, 3.5rem); }
+
+.error-404__depts-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  margin-block-end: clamp(0.9rem, 2vw, 1.25rem);
+  text-align: center;
+}
+
+.error-404__depts-title { margin: 0; font-size: 1.15rem; }
+
+.error-404__depts-note { font-size: 0.88rem; color: var(--color-text-muted); }
+
+.error-404__dept-item { display: flex; }
+
+.error-404__dept {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: 0.6rem 0.8rem;
+  text-decoration: none;
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) ease;
+}
+
+@media (hover: hover) {
+  .error-404__dept:hover {
+    border-color: rgba(var(--color-accent-rgb), 0.35);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+
+.error-404__dept-media {
+  inline-size: 48px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.error-404__dept-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 48px;
+  block-size: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+
+.error-404__dept-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-inline-size: 0;
+  flex: 1 1 auto;
+}
+
+.error-404__dept-title {
+  font-family: var(--font-heading-family);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-404__dept:hover .error-404__dept-title { color: var(--color-accent); }
+
+.error-404__dept-count { font-size: 0.8rem; color: var(--color-text-muted); }
+
+.error-404__dept-arrow {
+  flex-shrink: 0;
+  color: var(--color-border-strong);
+  transition: color var(--duration-fast) ease;
+}
+
+.error-404__dept:hover .error-404__dept-arrow { color: var(--color-accent); }
+
+/* ---------- Help row ---------- */
+.error-404__help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem 1.5rem;
+  margin-block-start: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.error-404__help-text {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-ink);
+  flex: 1 1 240px;
+}
+
+.error-404__help-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.error-404__help-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-block-size: 44px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.error-404__help-item .icon { color: var(--color-accent); }
+.error-404__help-item[href]:hover { color: var(--color-accent); }
+
+.error-404__phone { direction: ltr; unicode-bidi: isolate; }

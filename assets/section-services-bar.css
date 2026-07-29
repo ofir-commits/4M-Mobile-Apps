@@ -1,0 +1,64 @@
+/* =========================================================
+   Shilo Pro — Services / trust band (v2 "Clarity")
+   Four calm white .card tiles, each with a tinted circular
+   icon badge. 2x2 on mobile, 4 across from 750px.
+   Hairlines only — no heavy borders, no dividers.
+   ========================================================= */
+
+@media (min-width: 750px) {
+  .services-bar__grid {
+    grid-template-columns: repeat(var(--services-count, 4), minmax(0, 1fr));
+  }
+}
+
+/* ---------- Tile: icon over text on mobile, side by side on desktop ---------- */
+.services-bar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-inline-size: 0;
+}
+
+@media (min-width: 750px) {
+  .services-bar__item {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.85rem;
+  }
+}
+
+/* ---------- Tinted icon badge ---------- */
+.services-bar__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 46px;
+  block-size: 46px;
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* ---------- Copy ---------- */
+.services-bar__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-inline-size: 0;
+}
+
+.services-bar__title {
+  font-family: var(--font-heading-family);
+  font-size: 0.99rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
+}
+
+.services-bar__sub {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}

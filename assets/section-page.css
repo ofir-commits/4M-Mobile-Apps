@@ -1,0 +1,56 @@
+/* =========================================================
+   Shilo Pro — Static page template (sections/main-page.liquid)
+   v2 "Clarity". Article-width reading column on the light canvas.
+   Tokens and base.css components only — see theme/DESIGN-SYSTEM.md.
+   ========================================================= */
+
+.main-page__crumbs { margin-block-end: clamp(1rem, 2.5vw, 1.5rem); }
+
+.main-page__head { margin-block-end: clamp(1.25rem, 2.5vw, 1.75rem); }
+
+.main-page__title { margin: 0; }
+
+.main-page__lead {
+  margin-block-start: 0.85rem;
+  color: var(--color-text-muted);
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+
+.main-page__figure {
+  margin-block-end: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.main-page__media {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+}
+
+.main-page__caption {
+  margin-block-start: 0.6rem;
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* First heading of the body copy sits close to the title / hero image. */
+.main-page__content > .rte > :first-child { margin-block-start: 0; }
+
+.main-page__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin-block-start: clamp(1.75rem, 3.5vw, 2.5rem);
+  padding-block-start: clamp(1.25rem, 2.5vw, 1.75rem);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.main-page__footer-text {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.main-page__phone { direction: ltr; unicode-bidi: isolate; }

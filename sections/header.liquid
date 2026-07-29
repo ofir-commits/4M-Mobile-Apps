@@ -1,0 +1,676 @@
+{{ 'section-header.css' | asset_url | stylesheet_tag }}
+{{ 'section-search.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'section-header.js' | asset_url }}" defer="defer"></script>
+
+{%- comment -%}
+  Sticky off: the wrapper drops out of the sticky/fixed-height arrangement, so the
+  header has to go back into normal flow with it. .site-header is position:absolute
+  inside the sticky wrapper (see the note in section-header.css) and would otherwise
+  resolve against whatever the nearest positioned ancestor happens to be.
+{%- endcomment -%}
+{%- unless section.settings.enable_sticky -%}
+  <style>
+    #shopify-section-{{ section.id }} {
+      position: static;
+      block-size: auto;
+    }
+    #shopify-section-{{ section.id }} .site-header {
+      position: relative;
+      inline-size: auto;
+    }
+  </style>
+{%- endunless -%}
+
+{%- liquid
+  assign menu = section.settings.menu
+  assign logo_width = settings.logo_width | default: 260
+  assign logo_width_2x = logo_width | times: 2
+
+  # width/height are the intrinsic-ratio hint that reserves the right box before
+  # the image lands. The CSS caps both axes and lets the browser pick the tighter
+  # one, so the rendered size can come out smaller than these numbers on a phone —
+  # only the ratio between them has to be right.
+  assign logo_ar = settings.logo.aspect_ratio | default: 1
+  assign logo_height = logo_width | divided_by: logo_ar | round
+  assign all_label = section.settings.mega_all_label | default: 'לכל הקטגוריה'
+
+  assign phone_href = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+
+  # store_hours is a textarea (one line per day range) — the utility row shows
+  # the first line only; the full block lives in the footer and contact page.
+  assign hours_lines = settings.store_hours | newline_to_br | strip_newlines | split: '<br />'
+  assign hours_first = hours_lines[0] | strip
+
+  # The shipping line only makes sense with a threshold behind it — without one
+  # the sentence would end on "מעל", so it is dropped instead.
+  assign shipping_note = ''
+  assign shipping_threshold = settings.free_shipping_threshold | plus: 0
+  if shipping_threshold > 0 and section.settings.utility_message != blank
+    assign shipping_amount = shipping_threshold | times: 100 | money_without_trailing_zeros
+    assign shipping_note = section.settings.utility_message | append: ' ' | append: shipping_amount
+  endif
+
+  assign root_slash = routes.root_url | append: '/' | replace: '//', '/'
+  assign contact_url = root_slash | append: 'pages/contact'
+  if section.settings.contact_page != blank
+    assign contact_url = section.settings.contact_page.url
+  endif
+
+  assign wa_raw = settings.store_whatsapp | strip
+  assign wa_url = ''
+  if wa_raw != blank
+    if wa_raw contains 'http'
+      assign wa_url = wa_raw
+    else
+      assign wa_digits = wa_raw | remove: '+' | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+      assign wa_url = 'https://wa.me/' | append: wa_digits
+    endif
+  endif
+-%}
+
+<header
+  class="site-header"
+  {% if section.settings.enable_sticky %}data-sticky-header{% endif %}
+>
+  {%- comment -%} Row 1 — slim utility strip on ink {%- endcomment -%}
+  {%- if section.settings.show_utility_bar -%}
+    <div class="util-bar site-header__util" data-header-util>
+      <div class="container site-header__util-inner">
+        {%- if settings.store_phone != blank -%}
+          <a class="site-header__util-item site-header__util-phone" href="tel:{{ phone_href }}">
+            {% render 'icon', name: 'phone', size: 15 %}
+            <span class="visually-hidden">{{ 'general.contact.phone' | t }}:</span>
+            <span dir="ltr">{{ settings.store_phone }}</span>
+          </a>
+        {%- endif -%}
+
+        {%- if hours_first != blank -%}
+          <span class="site-header__util-item site-header__util-secondary">
+            {% render 'icon', name: 'clock', size: 15 %}
+            <span class="visually-hidden">{{ 'general.contact.hours' | t }}:</span>
+            <span>{{ hours_first }}</span>
+          </span>
+        {%- endif -%}
+
+        {%- if shipping_note != blank -%}
+          <span class="site-header__util-item site-header__util-secondary">
+            {% render 'icon', name: 'truck', size: 15 %}
+            <span>{{ shipping_note }}</span>
+          </span>
+        {%- endif -%}
+
+        <a class="site-header__util-item site-header__util-contact" href="{{ contact_url }}">
+          {% render 'icon', name: 'headset', size: 15 %}
+          <span>{{ 'general.contact.title' | t }}</span>
+        </a>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- comment -%} Row 2 — logo, the big predictive search field, account + cart {%- endcomment -%}
+  <div class="site-header__main">
+    <div class="container">
+      <div class="site-header__row">
+        <button
+          type="button"
+          class="btn-icon site-header__burger"
+          data-drawer-open="MenuDrawer"
+          aria-label="{{ 'general.accessibility.open_menu' | t }}"
+          aria-controls="MenuDrawer"
+        >
+          {% render 'icon', name: 'menu', size: 24 %}
+        </button>
+
+        <a class="site-header__logo" href="{{ routes.root_url }}" style="--logo-width: {{ logo_width }}px">
+          {%- if settings.logo != blank -%}
+            <img
+              class="site-header__logo-img"
+              src="{{ settings.logo | image_url: width: logo_width_2x }}"
+              srcset="{{ settings.logo | image_url: width: logo_width }} 1x, {{ settings.logo | image_url: width: logo_width_2x }} 2x"
+              width="{{ logo_width }}"
+              height="{{ logo_height }}"
+              alt="{{ settings.logo.alt | default: shop.name | escape }}"
+              fetchpriority="high"
+            >
+          {%- else -%}
+            <span class="site-header__logo-text">{{ shop.name }}</span>
+          {%- endif -%}
+        </a>
+
+        <div class="site-header__search">
+          <form action="{{ routes.search_url }}" method="get" role="search" class="header-search" data-header-search>
+            <div class="header-search__box">
+              <span class="header-search__icon" aria-hidden="true">
+                {% render 'icon', name: 'search', size: 19 %}
+              </span>
+              <input
+                id="HeaderSearchInput-desktop-{{ section.id }}"
+                class="header-search__input"
+                type="search"
+                name="q"
+                value="{{ search.terms | escape }}"
+                placeholder="{{ 'general.search.placeholder' | t }}"
+                role="combobox"
+                aria-expanded="false"
+                aria-controls="HeaderSearchPanel-desktop-{{ section.id }}"
+                aria-autocomplete="list"
+                aria-label="{{ 'general.search.title' | t }}"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                data-search-input
+              >
+              <button type="button" class="header-search__clear" data-search-clear hidden aria-label="{{ 'general.search.clear' | t }}">
+                {% render 'icon', name: 'close', size: 16 %}
+              </button>
+              <button type="submit" class="header-search__submit" aria-label="{{ 'general.search.submit' | t }}">
+                <span class="header-search__submit-text">{{ 'general.search.submit' | t }}</span>
+                {% render 'icon', name: 'search', size: 20, class: 'header-search__submit-icon' %}
+              </button>
+            </div>
+            <div class="header-search__panel" id="HeaderSearchPanel-desktop-{{ section.id }}" data-search-panel hidden>
+              {%- if settings.popular_searches != blank -%}
+                <div class="header-search__popular" data-search-popular hidden>
+                  <p class="predictive-results__heading">{{ 'general.search.popular' | t }}</p>
+                  <div class="header-search__chips">
+                    {%- assign popular_terms = settings.popular_searches | split: ',' -%}
+                    {%- for term in popular_terms -%}
+                      {%- assign term_clean = term | strip -%}
+                      {%- if term_clean != blank -%}
+                        <a class="chip" href="{{ routes.search_url }}?q={{ term_clean | url_param_escape }}">
+                          {% render 'icon', name: 'search', size: 13 %}
+                          {{ term_clean }}
+                        </a>
+                      {%- endif -%}
+                    {%- endfor -%}
+                  </div>
+                </div>
+              {%- endif -%}
+              <div class="header-search__skeleton" data-search-skeleton hidden aria-hidden="true">
+                {%- for i in (1..4) -%}
+                  <div class="header-search__skeleton-row">
+                    <span class="skeleton header-search__skeleton-media"></span>
+                    <span class="header-search__skeleton-lines">
+                      <span class="skeleton header-search__skeleton-line"></span>
+                      <span class="skeleton header-search__skeleton-line header-search__skeleton-line--short"></span>
+                    </span>
+                  </div>
+                {%- endfor -%}
+              </div>
+              <div class="header-search__results" data-search-results hidden></div>
+
+              {%- comment -%}
+                aria-live used to sit on the results div, which is replaced wholesale
+                on every keystroke — that announces the whole dropdown. Only the count
+                sentence should be announced, and the section that renders the results
+                is the side that knows the number, so it emits the sentence and
+                section-header.js copies it in here.
+              {%- endcomment -%}
+              <p class="visually-hidden" role="status" data-search-status></p>
+
+              {%- comment -%}
+                Client-side empty state. A failed or empty request must never close the
+                panel — that silence is what made this read as "the search does
+                nothing". section-header.js clones this and substitutes [terms],
+                the same placeholder idiom layout/theme.liquid uses for [quantity].
+              {%- endcomment -%}
+              <template data-search-empty>
+                <div class="predictive-results__empty">
+                  {% render 'icon', name: 'search', size: 30 %}
+                  <p class="predictive-results__empty-title">{{ 'general.search.no_results' | t: terms: '[terms]' }}</p>
+                  <p class="predictive-results__empty-hint">{{ 'general.search.no_results_hint' | t }}</p>
+                </div>
+              </template>
+            </div>
+          </form>
+        </div>
+
+        <div class="site-header__icons">
+          {%- if section.settings.show_account and shop.customer_accounts_enabled -%}
+            <a href="{{ routes.account_url }}" class="btn-icon site-header__account" aria-label="{{ 'sections.header.account' | t }}">
+              {% render 'icon', name: 'user', size: 23 %}
+            </a>
+          {%- endif -%}
+
+          {%- if settings.cart_type == 'drawer' -%}
+            <button type="button" class="btn-icon site-header__cart" data-drawer-open="CartDrawer" aria-label="{{ 'general.accessibility.open_cart' | t }}">
+              {% render 'icon', name: 'cart', size: 23 %}
+              <span class="cart-bubble{% if cart.item_count == 0 %} is-empty{% endif %}" data-cart-bubble>{{ cart.item_count }}</span>
+            </button>
+          {%- else -%}
+            <a href="{{ routes.cart_url }}" class="btn-icon site-header__cart" aria-label="{{ 'general.accessibility.open_cart' | t }}">
+              {% render 'icon', name: 'cart', size: 23 %}
+              <span class="cart-bubble{% if cart.item_count == 0 %} is-empty{% endif %}" data-cart-bubble>{{ cart.item_count }}</span>
+            </a>
+          {%- endif -%}
+        </div>
+      </div>
+
+      {%- comment -%} On mobile the search field gets a row of its own {%- endcomment -%}
+      <div class="site-header__search-row">
+        <form action="{{ routes.search_url }}" method="get" role="search" class="header-search" data-header-search>
+          <div class="header-search__box">
+            <span class="header-search__icon" aria-hidden="true">
+              {% render 'icon', name: 'search', size: 19 %}
+            </span>
+            <input
+              id="HeaderSearchInput-mobile-{{ section.id }}"
+              class="header-search__input"
+              type="search"
+              name="q"
+              value="{{ search.terms | escape }}"
+              placeholder="{{ 'general.search.placeholder' | t }}"
+              role="combobox"
+              aria-expanded="false"
+              aria-controls="HeaderSearchPanel-mobile-{{ section.id }}"
+              aria-autocomplete="list"
+              aria-label="{{ 'general.search.title' | t }}"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              data-search-input
+            >
+            <button type="button" class="header-search__clear" data-search-clear hidden aria-label="{{ 'general.search.clear' | t }}">
+              {% render 'icon', name: 'close', size: 16 %}
+            </button>
+            <button type="submit" class="header-search__submit" aria-label="{{ 'general.search.submit' | t }}">
+              <span class="header-search__submit-text">{{ 'general.search.submit' | t }}</span>
+              {% render 'icon', name: 'search', size: 20, class: 'header-search__submit-icon' %}
+            </button>
+          </div>
+          <div class="header-search__panel" id="HeaderSearchPanel-mobile-{{ section.id }}" data-search-panel hidden>
+            {%- if settings.popular_searches != blank -%}
+              <div class="header-search__popular" data-search-popular hidden>
+                <p class="predictive-results__heading">{{ 'general.search.popular' | t }}</p>
+                <div class="header-search__chips">
+                  {%- assign popular_terms = settings.popular_searches | split: ',' -%}
+                  {%- for term in popular_terms -%}
+                    {%- assign term_clean = term | strip -%}
+                    {%- if term_clean != blank -%}
+                      <a class="chip" href="{{ routes.search_url }}?q={{ term_clean | url_param_escape }}">
+                        {% render 'icon', name: 'search', size: 13 %}
+                        {{ term_clean }}
+                      </a>
+                    {%- endif -%}
+                  {%- endfor -%}
+                </div>
+              </div>
+            {%- endif -%}
+            <div class="header-search__skeleton" data-search-skeleton hidden aria-hidden="true">
+              {%- for i in (1..4) -%}
+                <div class="header-search__skeleton-row">
+                  <span class="skeleton header-search__skeleton-media"></span>
+                  <span class="header-search__skeleton-lines">
+                    <span class="skeleton header-search__skeleton-line"></span>
+                    <span class="skeleton header-search__skeleton-line header-search__skeleton-line--short"></span>
+                  </span>
+                </div>
+              {%- endfor -%}
+            </div>
+            <div class="header-search__results" data-search-results hidden></div>
+            <p class="visually-hidden" role="status" data-search-status></p>
+            <template data-search-empty>
+              <div class="predictive-results__empty">
+                {% render 'icon', name: 'search', size: 30 %}
+                <p class="predictive-results__empty-title">{{ 'general.search.no_results' | t: terms: '[terms]' }}</p>
+                <p class="predictive-results__empty-hint">{{ 'general.search.no_results_hint' | t }}</p>
+              </div>
+            </template>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} Row 3 — nav row + mega menu panels {%- endcomment -%}
+  <nav class="site-header__nav" data-header-nav aria-label="{{ 'sections.header.menu' | t }}">
+    <div class="container site-header__nav-inner">
+      <ul class="site-nav" role="list">
+        {%- if menu.links.size > 0 -%}
+          {%- for link in menu.links -%}
+            {%- if link.links.size > 0 -%}
+              {%- liquid
+                assign has_mega = false
+                for child in link.links
+                  if child.links.size > 0
+                    assign has_mega = true
+                    break
+                  endif
+                endfor
+
+                comment
+                  Every entry gets a thumb (owner request): the collection's
+                  own image, else a product photo picked by the row's index —
+                  snippets/nav-thumb.liquid carries the offset logic that keeps
+                  sibling collections sharing a first product from showing the
+                  same photo twice in one panel.
+                endcomment
+              -%}
+              <li class="site-nav__item{% if has_mega %} site-nav__item--mega{% endif %}">
+                <details class="site-nav__dropdown" data-disclosure data-nav-dropdown>
+                  <summary class="site-nav__link{% if link.active or link.child_active %} is-active{% endif %}">
+                    <span>{{ link.title | escape }}</span>
+                    {% render 'icon', name: 'chevron-down', size: 15 %}
+                  </summary>
+
+                  {%- if has_mega -%}
+                    <div class="site-nav__panel site-nav__panel--mega">
+                      <div class="container site-nav__mega">
+                        <div class="site-nav__mega-cols">
+                          {%- for child in link.links -%}
+                            <div class="site-nav__col">
+                              <a class="site-nav__col-title{% if child.active or child.child_active %} is-active{% endif %}" href="{{ child.url }}">
+                                {% render 'nav-thumb', link: child, size: 40, position: forloop.index0 %}
+                                <span>{{ child.title | escape }}</span>
+                                {% render 'icon', name: 'arrow-right', size: 13, class: 'icon--dir' %}
+                              </a>
+                              {%- if child.links.size > 0 -%}
+                                <ul class="site-nav__col-list" role="list">
+                                  {%- for grandchild in child.links -%}
+                                    <li>
+                                      <a
+                                        class="site-nav__sublink{% if grandchild.active %} is-active{% endif %}"
+                                        href="{{ grandchild.url }}"
+                                        {% if grandchild.active %}aria-current="page"{% endif %}
+                                      >{{ grandchild.title | escape }}</a>
+                                    </li>
+                                  {%- endfor -%}
+                                </ul>
+                              {%- endif -%}
+                            </div>
+                          {%- endfor -%}
+                        </div>
+                      </div>
+
+                      {%- if link.url != '#' and link.url != blank -%}
+                        <div class="site-nav__mega-foot">
+                          <div class="container">
+                            <a class="site-nav__mega-all" href="{{ link.url }}">
+                              {% render 'icon', name: 'grid', size: 16 %}
+                              <span class="site-nav__mega-all-label">{{ all_label }}</span>
+                              <span class="site-nav__mega-all-title">{{ link.title | escape }}</span>
+                              {% render 'icon', name: 'arrow-right', size: 15, class: 'icon--dir' %}
+                            </a>
+                          </div>
+                        </div>
+                      {%- endif -%}
+                    </div>
+                  {%- else -%}
+                    <div class="site-nav__panel site-nav__panel--flyout">
+                      <ul class="site-nav__list" role="list">
+                        {%- if link.url != '#' and link.url != blank -%}
+                          <li>
+                            <a class="site-nav__sublink site-nav__sublink--all" href="{{ link.url }}">
+                              {{ all_label }}
+                              {% render 'icon', name: 'arrow-right', size: 14, class: 'icon--dir' %}
+                            </a>
+                          </li>
+                        {%- endif -%}
+                        {%- for child in link.links -%}
+                          <li>
+                            <a
+                              class="site-nav__sublink site-nav__sublink--thumbed{% if child.active %} is-active{% endif %}"
+                              href="{{ child.url }}"
+                              {% if child.active %}aria-current="page"{% endif %}
+                            >
+                              {% render 'nav-thumb', link: child, size: 34, position: forloop.index0 %}
+                              <span>{{ child.title | escape }}</span>
+                            </a>
+                          </li>
+                        {%- endfor -%}
+                      </ul>
+                    </div>
+                  {%- endif -%}
+                </details>
+              </li>
+            {%- else -%}
+              <li class="site-nav__item">
+                <a class="site-nav__link{% if link.active %} is-active{% endif %}" href="{{ link.url }}" {% if link.active %}aria-current="page"{% endif %}>
+                  <span>{{ link.title | escape }}</span>
+                </a>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- else -%}
+          <li class="site-nav__item">
+            <a class="site-nav__link" href="{{ routes.root_url }}"><span>{{ 'general.breadcrumbs.home' | t }}</span></a>
+          </li>
+          <li class="site-nav__item">
+            <a class="site-nav__link" href="{{ routes.all_products_collection_url }}"><span>{{ 'general.breadcrumbs.collections' | t }}</span></a>
+          </li>
+        {%- endif -%}
+      </ul>
+    </div>
+  </nav>
+</header>
+
+{%- comment -%}
+  Mobile menu drawer. section-header.js re-parents it to document.body at
+  runtime so it escapes the sticky wrapper's stacking context (the global
+  overlay sits at z-index 90).
+{%- endcomment -%}
+<div
+  id="MenuDrawer"
+  class="drawer drawer--start menu-drawer"
+  data-menu-drawer
+  role="dialog"
+  aria-modal="true"
+  aria-label="{{ 'sections.header.menu' | t }}"
+  aria-hidden="true"
+>
+  <div class="drawer__header">
+    <span class="drawer__title h5">{{ 'sections.header.categories' | t }}</span>
+    <button type="button" class="btn-icon" data-drawer-close aria-label="{{ 'general.accessibility.close' | t }}">
+      {% render 'icon', name: 'close', size: 22 %}
+    </button>
+  </div>
+
+  <div class="drawer__body menu-drawer__body">
+    <nav aria-label="{{ 'sections.header.menu' | t }}">
+      <ul class="menu-drawer__list" role="list">
+        {%- if menu.links.size > 0 -%}
+          {%- for link in menu.links -%}
+            {%- if link.links.size > 0 -%}
+              <li class="menu-drawer__item">
+                <details class="menu-drawer__sub"{% if link.child_active %} open{% endif %}>
+                  <summary class="menu-drawer__link menu-drawer__toggle{% if link.active or link.child_active %} is-active{% endif %}">
+                    <span>{{ link.title | escape }}</span>
+                    {% render 'icon', name: 'chevron-down', size: 18, class: 'icon-chevron' %}
+                  </summary>
+                  <ul class="menu-drawer__sublist" role="list">
+                    {%- if link.url != '#' and link.url != blank -%}
+                      <li>
+                        <a class="menu-drawer__sublink menu-drawer__sublink--all" href="{{ link.url }}">
+                          {{ all_label }}
+                          {% render 'icon', name: 'arrow-right', size: 14, class: 'icon--dir' %}
+                        </a>
+                      </li>
+                    {%- endif -%}
+                    {%- for child in link.links -%}
+                      {%- if child.links.size > 0 -%}
+                        <li>
+                          <details class="menu-drawer__sub menu-drawer__sub--nested"{% if child.child_active %} open{% endif %}>
+                            <summary class="menu-drawer__sublink menu-drawer__toggle{% if child.active or child.child_active %} is-active{% endif %}">
+                              <span>{{ child.title | escape }}</span>
+                              {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
+                            </summary>
+                            <ul class="menu-drawer__sublist menu-drawer__sublist--nested" role="list">
+                              {%- if child.url != '#' and child.url != blank -%}
+                                <li>
+                                  <a class="menu-drawer__sublink menu-drawer__sublink--all" href="{{ child.url }}">
+                                    {{ all_label }}
+                                    {% render 'icon', name: 'arrow-right', size: 13, class: 'icon--dir' %}
+                                  </a>
+                                </li>
+                              {%- endif -%}
+                              {%- for grandchild in child.links -%}
+                                <li>
+                                  <a
+                                    class="menu-drawer__sublink menu-drawer__sublink--leaf{% if grandchild.active %} is-active{% endif %}"
+                                    href="{{ grandchild.url }}"
+                                    {% if grandchild.active %}aria-current="page"{% endif %}
+                                  >{{ grandchild.title | escape }}</a>
+                                </li>
+                              {%- endfor -%}
+                            </ul>
+                          </details>
+                        </li>
+                      {%- else -%}
+                        <li>
+                          <a
+                            class="menu-drawer__sublink menu-drawer__sublink--leaf{% if child.active %} is-active{% endif %}"
+                            href="{{ child.url }}"
+                            {% if child.active %}aria-current="page"{% endif %}
+                          >{{ child.title | escape }}</a>
+                        </li>
+                      {%- endif -%}
+                    {%- endfor -%}
+                  </ul>
+                </details>
+              </li>
+            {%- else -%}
+              <li class="menu-drawer__item">
+                <a class="menu-drawer__link{% if link.active %} is-active{% endif %}" href="{{ link.url }}" {% if link.active %}aria-current="page"{% endif %}>
+                  <span>{{ link.title | escape }}</span>
+                </a>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- else -%}
+          <li class="menu-drawer__item">
+            <a class="menu-drawer__link" href="{{ routes.root_url }}"><span>{{ 'general.breadcrumbs.home' | t }}</span></a>
+          </li>
+          <li class="menu-drawer__item">
+            <a class="menu-drawer__link" href="{{ routes.all_products_collection_url }}"><span>{{ 'general.breadcrumbs.collections' | t }}</span></a>
+          </li>
+        {%- endif -%}
+      </ul>
+    </nav>
+
+    <ul class="menu-drawer__utils" role="list">
+      {%- if section.settings.show_account and shop.customer_accounts_enabled -%}
+        <li>
+          <a class="menu-drawer__util" href="{{ routes.account_url }}">
+            {% render 'icon', name: 'user', size: 18 %}
+            <span>{{ 'sections.header.account' | t }}</span>
+          </a>
+        </li>
+      {%- endif -%}
+      <li>
+        <a class="menu-drawer__util" href="{{ contact_url }}">
+          {% render 'icon', name: 'headset', size: 18 %}
+          <span>{{ 'general.contact.title' | t }}</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="drawer__footer menu-drawer__footer">
+    <div class="menu-drawer__actions">
+      {%- if settings.store_phone != blank -%}
+        <a class="btn btn--secondary btn--sm menu-drawer__action" href="tel:{{ phone_href }}">
+          {% render 'icon', name: 'phone', size: 17 %}
+          <span dir="ltr">{{ settings.store_phone }}</span>
+        </a>
+      {%- endif -%}
+      {%- if wa_url != blank -%}
+        <a class="btn btn--sm menu-drawer__action menu-drawer__action--whatsapp" href="{{ wa_url }}" target="_blank" rel="noopener">
+          {% render 'icon', name: 'whatsapp', size: 17 %}
+          <span>{{ 'general.social.whatsapp' | t }}</span>
+        </a>
+      {%- endif -%}
+      {%- if settings.store_google != blank -%}
+        <a
+          class="btn btn--ghost btn--sm menu-drawer__action"
+          href="{{ settings.store_google }}"
+          target="_blank"
+          rel="noopener"
+          aria-label="{{ 'general.social.google' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+        >
+          {% render 'icon', name: 'google', size: 17 %}
+          <span>{{ 'general.social.google' | t }}</span>
+        </a>
+      {%- endif -%}
+    </div>
+
+    {%- if settings.store_address != blank or hours_first != blank -%}
+      <p class="menu-drawer__meta">
+        {%- if settings.store_address != blank -%}
+          <span class="menu-drawer__meta-item">
+            {% render 'icon', name: 'map-pin', size: 14 %}
+            {{ settings.store_address }}
+          </span>
+        {%- endif -%}
+        {%- if hours_first != blank -%}
+          <span class="menu-drawer__meta-item">
+            {% render 'icon', name: 'clock', size: 14 %}
+            {{ hours_first }}
+          </span>
+        {%- endif -%}
+      </p>
+    {%- endif -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "כותרת עליונה",
+  "class": "site-header-wrapper",
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "תפריט ראשי",
+      "default": "main-menu"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_sticky",
+      "label": "הדר צמוד בזמן גלילה",
+      "info": "בגלילה פס המידע ושורת הקטגוריות מתקפלים והכותרת מתכווצת ללוגו, חיפוש ואייקונים.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_account",
+      "label": "הצגת קישור לאזור האישי",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "פס מידע עליון"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_utility_bar",
+      "label": "הצגת פס המידע (טלפון, שעות, משלוחים)",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "utility_message",
+      "label": "הודעת המשלוחים בפס המידע",
+      "info": "סכום המשלוח החינם נוסף אוטומטית מהגדרות התבנית.",
+      "default": "משלוח חינם בקנייה מעל"
+    },
+    {
+      "type": "page",
+      "id": "contact_page",
+      "label": "עמוד יצירת קשר",
+      "info": "ברירת המחדל: /pages/contact"
+    },
+    {
+      "type": "header",
+      "content": "תפריט קטגוריות"
+    },
+    {
+      "type": "text",
+      "id": "mega_all_label",
+      "label": "טקסט הקישור לקטגוריה המלאה",
+      "default": "לכל הקטגוריה"
+    }
+  ]
+}
+{% endschema %}

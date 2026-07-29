@@ -1,0 +1,541 @@
+{{ 'section-footer.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign menu_1 = section.settings.menu_1
+  assign menu_2 = section.settings.menu_2
+
+  assign heading_1 = section.settings.heading_1
+  if heading_1 == blank and menu_1 != blank
+    assign heading_1 = menu_1.title
+  endif
+  if heading_1 == blank
+    assign heading_1 = 'ניווט באתר'
+  endif
+
+  assign heading_2 = section.settings.heading_2
+  if heading_2 == blank and menu_2 != blank
+    assign heading_2 = menu_2.title
+  endif
+  if heading_2 == blank
+    assign heading_2 = 'אודותינו'
+  endif
+
+  assign contact_email = settings.store_email
+  if contact_email == blank
+    assign contact_email = shop.email
+  endif
+
+  assign phone_href = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+
+  assign wa_raw = settings.store_whatsapp | strip
+  assign wa_href = ''
+  if wa_raw != blank
+    assign wa_scheme = wa_raw | slice: 0, 4
+    if wa_scheme == 'http'
+      assign wa_href = wa_raw
+    else
+      assign wa_digits = wa_raw | remove: '+' | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+      assign wa_href = 'https://wa.me/' | append: wa_digits
+    endif
+  endif
+
+  assign has_social = false
+  if settings.social_facebook != blank or settings.social_instagram != blank or settings.social_tiktok != blank or settings.social_youtube != blank or settings.store_google != blank
+    assign has_social = true
+  endif
+
+  assign menu_1_title_id = 'FooterMenu1-' | append: section.id
+  assign menu_2_title_id = 'FooterMenu2-' | append: section.id
+-%}
+
+<footer class="footer section--ink blueprint-field" role="contentinfo">
+  <div class="footer__main">
+    <div class="container">
+      <div class="footer__grid">
+
+        {%- comment -%} 1 — brand, one-line description, social {%- endcomment -%}
+        <div class="footer__col footer__col--brand">
+          {%- if settings.logo != blank -%}
+            {%- liquid
+              assign logo_width = settings.logo_width | default: 260
+              assign logo_width_2x = logo_width | times: 2
+              assign logo_ratio = settings.logo.aspect_ratio | default: 2.5
+              assign logo_height = logo_width | divided_by: logo_ratio | round
+            -%}
+            <a href="{{ routes.root_url }}" class="footer__logo{% if section.settings.logo_treatment == 'bare' %} footer__logo--bare{% endif %}" aria-label="{{ shop.name | escape }}">
+              <img
+                src="{{ settings.logo | image_url: width: logo_width_2x }}"
+                srcset="{{ settings.logo | image_url: width: logo_width }} 1x, {{ settings.logo | image_url: width: logo_width_2x }} 2x"
+                alt="{{ settings.logo.alt | default: shop.name | escape }}"
+                width="{{ logo_width }}"
+                height="{{ logo_height }}"
+                loading="lazy"
+                class="footer__logo-img"
+              >
+            </a>
+          {%- else -%}
+            <a href="{{ routes.root_url }}" class="footer__logo">
+              <span class="footer__brand-name">{{ shop.name }}</span>
+            </a>
+          {%- endif -%}
+
+          {%- if section.settings.about_text != blank -%}
+            <div class="footer__about rte">{{ section.settings.about_text }}</div>
+          {%- endif -%}
+
+          {%- if section.settings.show_social and has_social -%}
+            <ul class="footer__social" role="list" aria-label="{{ 'general.social.follow_title' | t }}">
+              {%- if settings.social_facebook != blank -%}
+                <li>
+                  <a
+                    class="footer__social-link"
+                    href="{{ settings.social_facebook }}"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="{{ 'general.social.facebook' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+                  >
+                    {% render 'icon', name: 'facebook', size: 18 %}
+                  </a>
+                </li>
+              {%- endif -%}
+              {%- if settings.social_instagram != blank -%}
+                <li>
+                  <a
+                    class="footer__social-link"
+                    href="{{ settings.social_instagram }}"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="{{ 'general.social.instagram' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+                  >
+                    {% render 'icon', name: 'instagram', size: 18 %}
+                  </a>
+                </li>
+              {%- endif -%}
+              {%- if settings.store_google != blank -%}
+                <li>
+                  <a
+                    class="footer__social-link"
+                    href="{{ settings.store_google }}"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="{{ 'general.social.google' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+                  >
+                    {% render 'icon', name: 'google', size: 18 %}
+                  </a>
+                </li>
+              {%- endif -%}
+              {%- if settings.social_tiktok != blank -%}
+                <li>
+                  <a
+                    class="footer__social-link"
+                    href="{{ settings.social_tiktok }}"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="{{ 'general.social.tiktok' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+                  >
+                    {% render 'icon', name: 'tiktok', size: 18 %}
+                  </a>
+                </li>
+              {%- endif -%}
+              {%- if settings.social_youtube != blank -%}
+                <li>
+                  <a
+                    class="footer__social-link"
+                    href="{{ settings.social_youtube }}"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="{{ 'general.social.youtube' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+                  >
+                    {% render 'icon', name: 'youtube', size: 18 %}
+                  </a>
+                </li>
+              {%- endif -%}
+            </ul>
+          {%- endif -%}
+        </div>
+
+        {%- comment -%} 2 — first link list {%- endcomment -%}
+        <nav class="footer__col" aria-labelledby="{{ menu_1_title_id }}">
+          <h2 class="footer__title blueprint-underline" id="{{ menu_1_title_id }}">{{ heading_1 }}</h2>
+          <ul class="footer__links" role="list">
+            {%- if menu_1 != blank and menu_1.links.size > 0 -%}
+              {%- for link in menu_1.links -%}
+                <li><a class="footer__link" href="{{ link.url }}">{{ link.title | escape }}</a></li>
+              {%- endfor -%}
+            {%- else -%}
+              <li><a class="footer__link" href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t }}</a></li>
+              <li><a class="footer__link" href="{{ routes.all_products_collection_url }}">{{ 'general.error_404.button' | t }}</a></li>
+              <li><a class="footer__link" href="{{ routes.search_url }}">{{ 'general.search.title' | t }}</a></li>
+              <li><a class="footer__link" href="{{ routes.cart_url }}">{{ 'cart.general.title' | t }}</a></li>
+            {%- endif -%}
+          </ul>
+        </nav>
+
+        {%- comment -%} 3 — second link list {%- endcomment -%}
+        <nav class="footer__col" aria-labelledby="{{ menu_2_title_id }}">
+          <h2 class="footer__title blueprint-underline" id="{{ menu_2_title_id }}">{{ heading_2 }}</h2>
+          <ul class="footer__links" role="list">
+            {%- if menu_2 != blank and menu_2.links.size > 0 -%}
+              {%- for link in menu_2.links -%}
+                <li><a class="footer__link" href="{{ link.url }}">{{ link.title | escape }}</a></li>
+              {%- endfor -%}
+            {%- else -%}
+              <li><a class="footer__link" href="{{ routes.account_login_url }}">{{ 'customer.log_in' | t }}</a></li>
+              <li><a class="footer__link" href="{{ routes.account_register_url }}">{{ 'customer.register.title' | t }}</a></li>
+              <li><a class="footer__link" href="{{ routes.search_url }}">{{ 'general.search.title' | t }}</a></li>
+            {%- endif -%}
+          </ul>
+        </nav>
+
+        {%- comment -%} 4 — real contact details {%- endcomment -%}
+        <div class="footer__col footer__col--contact">
+          <h2 class="footer__title blueprint-underline">{{ 'general.contact.title' | t }}</h2>
+
+          <ul class="footer__contact" role="list">
+            {%- if settings.store_address != blank -%}
+              {%- comment -%}
+                Prefer the shop's own Google listing when one is configured: it is the
+                page with their real hours, photos and reviews. The constructed Maps
+                search is only a fallback for when that setting is empty, and it can
+                land on the wrong pin for a kibbutz address.
+              {%- endcomment -%}
+              {%- capture map_query -%}{{ shop.name }} {{ settings.store_address }}{%- endcapture -%}
+              {%- assign map_href = map_query | url_encode | prepend: 'https://www.google.com/maps/search/?api=1&query=' -%}
+              {%- if settings.store_google != blank -%}
+                {%- assign map_href = settings.store_google -%}
+              {%- endif -%}
+              <li>
+                <a
+                  class="footer__contact-item"
+                  href="{{ map_href | escape }}"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="{{ 'general.contact.address' | t }}: {{ settings.store_address | escape }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+                >
+                  {% render 'icon', name: 'map-pin', size: 18 %}
+                  <span>{{ settings.store_address }}</span>
+                </a>
+              </li>
+            {%- endif -%}
+
+            {%- if section.settings.show_phone and settings.store_phone != blank -%}
+              <li>
+                <a
+                  class="footer__contact-item footer__contact-item--phone"
+                  href="tel:{{ phone_href }}"
+                  aria-label="{{ 'general.contact.phone' | t }}: {{ settings.store_phone | escape }}"
+                >
+                  {% render 'icon', name: 'phone', size: 18 %}
+                  <span class="footer__phone" dir="ltr">{{ settings.store_phone }}</span>
+                </a>
+              </li>
+            {%- endif -%}
+
+            {%- if contact_email != blank -%}
+              <li>
+                <a
+                  class="footer__contact-item"
+                  href="mailto:{{ contact_email }}"
+                  aria-label="{{ 'general.contact.email' | t }}: {{ contact_email }}"
+                >
+                  {% render 'icon', name: 'mail', size: 18 %}
+                  <span dir="ltr">{{ contact_email }}</span>
+                </a>
+              </li>
+            {%- endif -%}
+
+            {%- if settings.store_hours != blank -%}
+              <li class="footer__contact-item">
+                {% render 'icon', name: 'clock', size: 18 %}
+                <span>
+                  <span class="visually-hidden">{{ 'general.contact.hours' | t }}: </span>
+                  <span class="footer__hours">{{ settings.store_hours | escape | newline_to_br }}</span>
+                </span>
+              </li>
+            {%- endif -%}
+          </ul>
+
+          {%- if wa_href != blank -%}
+            <a
+              class="btn footer__whatsapp"
+              href="{{ wa_href }}"
+              target="_blank"
+              rel="noopener"
+              aria-label="{{ 'general.contact.whatsapp_cta' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+            >
+              {% render 'icon', name: 'whatsapp', size: 18 %}
+              <span>{{ 'general.contact.whatsapp_cta' | t }}</span>
+            </a>
+          {%- endif -%}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} Optional inline newsletter row {%- endcomment -%}
+  {%- if section.settings.show_newsletter -%}
+    {%- liquid
+      assign footer_form_id = 'FooterNewsletterForm-' | append: section.id
+      assign footer_input_id = 'FooterNewsletterEmail-' | append: section.id
+    -%}
+    <div class="footer__newsletter">
+      <div class="container">
+        <div class="footer__newsletter-inner">
+          <div class="footer__newsletter-copy">
+            {%- if section.settings.newsletter_heading != blank -%}
+              <h2 class="footer__newsletter-heading">{{ section.settings.newsletter_heading | escape }}</h2>
+            {%- endif -%}
+            {%- if section.settings.newsletter_text != blank -%}
+              <p class="footer__newsletter-text">{{ section.settings.newsletter_text | escape }}</p>
+            {%- endif -%}
+          </div>
+
+          {%- form 'customer', id: footer_form_id, class: 'footer__newsletter-form' -%}
+            <input type="hidden" name="contact[tags]" value="newsletter">
+
+            {%- if form.posted_successfully? -%}
+              <div class="form__success footer__newsletter-success" role="status" tabindex="-1">
+                {% render 'icon', name: 'check-circle', size: 20 %}
+                <span>{{ 'general.newsletter.success' | t }}</span>
+              </div>
+            {%- else -%}
+              {%- if form.errors -%}
+                <div class="errors footer__newsletter-errors" role="alert">
+                  {%- assign email_error = form.errors.messages['email'] -%}
+                  <p>
+                    {%- if email_error != blank -%}
+                      {{ form.errors.translated_fields['email'] }} {{ email_error }}
+                    {%- else -%}
+                      {{ 'general.newsletter.error' | t }}
+                    {%- endif -%}
+                  </p>
+                </div>
+              {%- endif -%}
+
+              <div class="footer__newsletter-row">
+                <label class="visually-hidden" for="{{ footer_input_id }}">
+                  {{- 'general.newsletter.label' | t -}}
+                </label>
+                <input
+                  id="{{ footer_input_id }}"
+                  class="field__input footer__newsletter-input"
+                  type="email"
+                  name="contact[email]"
+                  value="{{ form.email }}"
+                  placeholder="{{ 'general.newsletter.placeholder' | t }}"
+                  autocomplete="email"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  required
+                >
+                <button type="submit" class="btn footer__newsletter-btn">
+                  {{- 'general.newsletter.button' | t -}}
+                </button>
+              </div>
+            {%- endif -%}
+          {%- endform -%}
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- comment -%} Legal + payment bar {%- endcomment -%}
+  <div class="footer__bottom">
+    <div class="container footer__bottom-inner">
+      <p class="footer__copyright">
+        &copy; {{ 'now' | date: '%Y' }} {{ shop.name }}. {{ 'sections.footer.rights' | t }}
+      </p>
+
+      <ul class="footer__legal-list" role="list">
+        {%- if section.settings.accessibility_url != blank and section.settings.accessibility_label != blank -%}
+          <li>
+            <a class="footer__legal-link" href="{{ section.settings.accessibility_url }}">
+              {{- section.settings.accessibility_label | escape -}}
+            </a>
+          </li>
+        {%- endif -%}
+        {%- comment -%}
+          policy.title comes from the Shopify admin, where these pages were left on
+          their English defaults ("Refund policy", "Terms of service"), so the only
+          English text on an otherwise Hebrew site was sitting in the footer. Label
+          them from the locale file instead, matched on the policy handle, and keep
+          policy.title as the fallback so a policy type this theme has not seen — or
+          one the owner has since renamed in Hebrew themselves — still gets a label.
+          Wording follows the store's existing "אודותינו" menu.
+        {%- endcomment -%}
+        {%- for policy in shop.policies -%}
+          {%- if policy != blank -%}
+            {%- liquid
+              assign policy_handle = policy.url | split: '/' | last
+              case policy_handle
+                when 'refund-policy'
+                  assign policy_label = 'sections.footer.policies.refund' | t
+                when 'shipping-policy'
+                  assign policy_label = 'sections.footer.policies.shipping' | t
+                when 'privacy-policy'
+                  assign policy_label = 'sections.footer.policies.privacy' | t
+                when 'terms-of-service'
+                  assign policy_label = 'sections.footer.policies.terms' | t
+                when 'contact-information'
+                  assign policy_label = 'sections.footer.policies.contact' | t
+                when 'subscription-policy'
+                  assign policy_label = 'sections.footer.policies.subscription' | t
+                when 'legal-notice'
+                  assign policy_label = 'sections.footer.policies.legal' | t
+                else
+                  assign policy_label = policy.title
+              endcase
+            -%}
+            <li>
+              <a class="footer__legal-link" href="{{ policy.url }}">{{ policy_label | escape }}</a>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+
+      {%- if section.settings.show_payment_icons and shop.enabled_payment_types.size > 0 -%}
+        <ul class="footer__payments" role="list" aria-label="{{ 'sections.footer.payment_methods' | t }}">
+          {%- comment -%}
+            Shopify bakes an English <title> into each payment SVG ("Visa",
+            "American Express"), which becomes the icon's accessible name and its
+            hover tooltip — English announced inside a Hebrew page. The card brands
+            are legitimately Latin as artwork, so the fix is to stop them being read
+            out rather than to relabel them: the <ul> above already carries the
+            Hebrew aria-label naming the whole group, so hiding the icons loses
+            nothing. aria-hidden goes on an inner span, NOT on the <li>: hiding the
+            li removes it from the accessibility tree, leaving role="list" with zero
+            listitem children (an aria-required-children violation) and announcing
+            the named group as empty.
+          {%- endcomment -%}
+          {%- for type in shop.enabled_payment_types -%}
+            <li><span aria-hidden="true">{{ type | payment_type_svg_tag: class: 'footer__payment-icon' }}</span></li>
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "כותרת תחתונה",
+  "settings": [
+    {
+      "type": "header",
+      "content": "עמודת מיתוג"
+    },
+    {
+      "type": "richtext",
+      "id": "about_text",
+      "label": "תיאור קצר של החנות",
+      "info": "הלוגו נלקח מהגדרות התבנית.",
+      "default": "<p>א.נ. שילו - חומרי בניין, כלי עבודה, ציוד טכני ומחסן עצים בקיבוץ קרית ענבים. מעל 30 שנה של שירות מקצועי לקבלנים, לנגרים ולמשק הבית.</p>"
+    },
+    {
+      "type": "select",
+      "id": "logo_treatment",
+      "label": "תצוגת הלוגו על הרקע הכהה",
+      "info": "\"משטח בהיר\" מתאים לכל לוגו, כולל לוגו עם רקע לבן. \"ללא רקע\" מיועד ללוגו שקוף בגוון בהיר שמעוצב לשבת ישירות על רקע כהה.",
+      "options": [
+        { "value": "plate", "label": "משטח בהיר (מומלץ)" },
+        { "value": "bare", "label": "ללא רקע" }
+      ],
+      "default": "plate"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_social",
+      "label": "הצגת רשתות חברתיות",
+      "info": "הקישורים מוגדרים בהגדרות התבנית תחת \"רשתות חברתיות\".",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "תפריטים"
+    },
+    {
+      "type": "text",
+      "id": "heading_1",
+      "label": "כותרת התפריט הראשון",
+      "default": "ניווט באתר"
+    },
+    {
+      "type": "link_list",
+      "id": "menu_1",
+      "label": "תפריט ראשון",
+      "default": "main-menu"
+    },
+    {
+      "type": "text",
+      "id": "heading_2",
+      "label": "כותרת התפריט השני",
+      "default": "אודותינו"
+    },
+    {
+      "type": "link_list",
+      "id": "menu_2",
+      "label": "תפריט שני",
+      "default": "footer"
+    },
+    {
+      "type": "header",
+      "content": "פרטי קשר"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_phone",
+      "label": "הצגת מספר הטלפון",
+      "info": "הכתובת, הטלפון, האימייל, שעות הפעילות והוואטסאפ מוגדרים בהגדרות התבנית תחת \"פרטי החנות\".",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "ניוזלטר"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_newsletter",
+      "label": "הצגת שורת הרשמה לניוזלטר",
+      "info": "בדף הבית קיים בלוק ניוזלטר נפרד - הפעילו כאן רק אם הוא הוסר משם.",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "newsletter_heading",
+      "label": "כותרת הניוזלטר",
+      "default": "מצטרפים לרשימת המבצעים"
+    },
+    {
+      "type": "text",
+      "id": "newsletter_text",
+      "label": "טקסט הניוזלטר",
+      "default": "מבצעים, חידושים בקטלוג וטיפים של מקצוענים - ישירות למייל."
+    },
+    {
+      "type": "header",
+      "content": "שורה תחתונה"
+    },
+    {
+      "type": "text",
+      "id": "accessibility_label",
+      "label": "טקסט הקישור להצהרת נגישות",
+      "default": "הצהרת נגישות"
+    },
+    {
+      "type": "text",
+      "id": "accessibility_url",
+      "label": "כתובת עמוד הצהרת הנגישות",
+      "info": "השאירו ריק כדי להסתיר את הקישור.",
+      "default": "/pages/הצהרת-נגישות-1"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_payment_icons",
+      "label": "הצגת אמצעי תשלום",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,116 @@
+{%- comment -%}
+  Renders a price block. Consumes the .price component from base.css.
+
+  Usage:
+    {% render 'price', product: product %}
+    {% render 'price', variant: variant, large: true %}
+
+  Params:
+    product   {Object}  product — price-range aware ("מ־" prefix when variants differ)
+    variant   {Object}  a specific variant (takes precedence over product)
+    large     {Boolean} product-page typography (.price--large)
+    hide_save {Boolean} suppress the "חיסכון" pill (compact contexts)
+    class     {String}  extra classes
+{%- endcomment -%}
+{%- liquid
+  assign target = variant | default: product
+
+  assign show_from = false
+  if variant == blank and product != blank and product.price_varies
+    assign show_from = true
+  endif
+
+  assign price = target.price
+  assign compare_at = target.compare_at_price
+
+  assign on_sale = false
+  if compare_at != blank and compare_at > price
+    assign on_sale = true
+  endif
+
+  assign save_percent = 0
+  if on_sale
+    assign save_percent = compare_at | minus: price | times: 100.0 | divided_by: compare_at | round
+  endif
+
+  assign show_save = true
+  if hide_save or save_percent < 1
+    assign show_save = false
+  endif
+
+  assign money_price = price | money
+  assign money_compare = compare_at | money
+  assign save_label = save_percent | append: '%'
+
+  comment
+    A chunk of this catalogue is published without a price. Rendering "₪0.00"
+    reads as broken and - worse - lets the item be bought for nothing, so an
+    unpriced item asks the customer to call instead. Range products where only
+    the cheapest variant is unpriced keep their real "from" price.
+  endcomment
+  assign call_for_price = false
+  if price == 0
+    assign call_for_price = true
+    if show_from and product.price_max > 0
+      assign call_for_price = false
+      assign show_from = true
+      assign money_price = product.price_max | money
+    endif
+  endif
+-%}
+{%- if target != blank -%}
+  {%- if call_for_price -%}
+    {%- liquid
+      assign tel_href = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+    -%}
+    <div class="price price--call{% if large %} price--large{% endif %}{% if class %} {{ class }}{% endif %}">
+      {%- if settings.store_phone != blank -%}
+        <a class="price__call" href="tel:{{ tel_href }}">
+          {% render 'icon', name: 'phone', size: 15 %}
+          <span>{{ 'products.price.call_for_price' | t }}</span>
+        </a>
+      {%- else -%}
+        <span class="price__call">{{ 'products.price.call_for_price' | t }}</span>
+      {%- endif -%}
+    </div>
+  {%- else -%}
+  <div class="price{% if on_sale %} price--on-sale{% endif %}{% if large %} price--large{% endif %}{% if class %} {{ class }}{% endif %}">
+    {%- if show_from -%}
+      <span class="price__from">{{ 'products.facets.from' | t }}</span>
+    {%- endif -%}
+
+    <span class="price__current" dir="ltr">
+      <span class="visually-hidden">
+        {%- if on_sale -%}
+          {{ 'products.price.sale_price' | t }}
+        {%- else -%}
+          {{ 'products.price.regular_price' | t }}
+        {%- endif -%}
+      </span>
+      {{- money_price -}}
+    </span>
+
+    {%- if on_sale -%}
+      <s class="price__compare" dir="ltr">
+        <span class="visually-hidden">{{ 'products.price.regular_price' | t }}</span>
+        {{- money_compare -}}
+      </s>
+      {%- if show_save -%}
+        <span class="price__save">{{ 'products.product.save_amount' | t: amount: save_label }}</span>
+      {%- endif -%}
+    {%- endif -%}
+
+    {%- if target.unit_price_measurement -%}
+      <span class="price__unit">
+        <span class="visually-hidden">{{ 'products.price.unit_price' | t }}</span>
+        <span dir="ltr">{{ target.unit_price | money }}</span>
+        {{ 'products.price.unit_price_separator' | t }}
+        {%- if target.unit_price_measurement.reference_value != 1 -%}
+          {{- target.unit_price_measurement.reference_value -}}
+        {%- endif -%}
+        {{ target.unit_price_measurement.reference_unit }}
+      </span>
+    {%- endif -%}
+  </div>
+  {%- endif -%}
+{%- endif -%}

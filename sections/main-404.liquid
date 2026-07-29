@@ -1,0 +1,196 @@
+{{ 'section-404.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%}
+  404 — a dead end that still does the job: search the catalogue, jump into the
+  busiest departments, or call the store. Department handles are editable so a
+  renamed collection never leaves a broken link (missing ones are skipped).
+{%- endcomment -%}
+{%- capture dept_items -%}
+  {%- assign dept_handles = section.settings.departments | split: ',' -%}
+  {%- for handle in dept_handles -%}
+    {%- assign dept_handle = handle | strip -%}
+    {%- if dept_handle == blank -%}{%- continue -%}{%- endif -%}
+    {%- assign dept = collections[dept_handle] -%}
+    {%- if dept.title == blank -%}{%- continue -%}{%- endif -%}
+    {%- assign dept_image = dept.image | default: dept.featured_image -%}
+    <li class="error-404__dept-item">
+      <a class="card error-404__dept" href="{{ dept.url }}">
+        {%- if dept_image != blank -%}
+          <span class="media media--square media--contain error-404__dept-media">
+            <img
+              src="{{ dept_image | image_url: width: 96 }}"
+              srcset="{{ dept_image | image_url: width: 48 }} 1x, {{ dept_image | image_url: width: 96 }} 2x"
+              alt=""
+              width="48"
+              height="48"
+              loading="lazy"
+              decoding="async"
+            >
+          </span>
+        {%- else -%}
+          <span class="error-404__dept-icon" aria-hidden="true">
+            {% render 'icon', name: 'layers', size: 20 %}
+          </span>
+        {%- endif -%}
+
+        <span class="error-404__dept-body">
+          <span class="error-404__dept-title">{{ dept.title | escape }}</span>
+          <span class="error-404__dept-count">
+            {{- 'products.facets.product_count_simple' | t: count: dept.all_products_count -}}
+          </span>
+        </span>
+
+        {% render 'icon', name: 'chevron-right', size: 18, class: 'icon--dir error-404__dept-arrow' %}
+      </a>
+    </li>
+  {%- endfor -%}
+{%- endcapture -%}
+{%- assign dept_items = dept_items | strip -%}
+
+<section class="section error-404">
+  <div class="container">
+    <div class="error-404__inner">
+      <span class="error-404__mark blueprint-field" dir="ltr" aria-hidden="true">404</span>
+
+      <h1 class="error-404__title">{{ 'general.error_404.title' | t }}</h1>
+      <p class="error-404__text">{{ 'general.error_404.subtitle' | t }}</p>
+
+      {%- if section.settings.show_search -%}
+        <form action="{{ routes.search_url }}" method="get" role="search" class="error-404__search">
+          <div class="error-404__field">
+            <span class="error-404__field-icon" aria-hidden="true">
+              {% render 'icon', name: 'search', size: 19 %}
+            </span>
+            <label class="visually-hidden" for="Error404SearchInput">{{ 'general.search.title' | t }}</label>
+            <input
+              id="Error404SearchInput"
+              class="error-404__input"
+              type="search"
+              name="q"
+              placeholder="{{ 'general.search.placeholder' | t }}"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+            >
+            <button type="submit" class="error-404__submit" aria-label="{{ 'general.search.submit' | t }}">
+              {% render 'icon', name: 'search', size: 19 %}
+            </button>
+          </div>
+        </form>
+      {%- endif -%}
+
+      <div class="error-404__actions">
+        <a href="{{ routes.all_products_collection_url }}" class="btn btn--lg">
+          {{ 'general.error_404.button' | t }}
+          {% render 'icon', name: 'arrow-right', size: 18, class: 'icon--dir' %}
+        </a>
+        <a href="{{ routes.root_url }}" class="btn btn--ghost btn--lg">
+          {% render 'icon', name: 'home', size: 18 %}
+          {{ 'general.breadcrumbs.home' | t }}
+        </a>
+      </div>
+    </div>
+
+    {%- if dept_items != blank -%}
+      <div class="error-404__depts">
+        <div class="error-404__depts-head">
+          <h2 class="error-404__depts-title">{{ section.settings.departments_heading | escape }}</h2>
+          <span class="error-404__depts-note">{{ section.settings.departments_note | escape }}</span>
+        </div>
+        <ul class="grid grid--4" role="list">{{ dept_items }}</ul>
+      </div>
+    {%- endif -%}
+
+    {%- if section.settings.show_help -%}
+      <div class="panel error-404__help">
+        <p class="error-404__help-text">{{ section.settings.help_text | escape }}</p>
+        <ul class="error-404__help-list" role="list">
+          {%- if settings.store_phone != blank -%}
+            <li>
+              <a class="error-404__help-item" href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}">
+                {% render 'icon', name: 'phone', size: 17 %}
+                <span class="error-404__phone">{{ settings.store_phone }}</span>
+              </a>
+            </li>
+          {%- endif -%}
+          {%- if settings.store_whatsapp != blank -%}
+            <li>
+              <a
+                class="error-404__help-item"
+                href="{{ settings.store_whatsapp }}"
+                target="_blank"
+                rel="noopener"
+                aria-describedby="a11y-new-window-message"
+              >
+                {% render 'icon', name: 'whatsapp', size: 17 %}
+                {{ 'general.social.whatsapp' | t }}
+              </a>
+            </li>
+          {%- endif -%}
+          {%- if settings.store_address != blank -%}
+            <li>
+              <span class="error-404__help-item">
+                {% render 'icon', name: 'map-pin', size: 17 %}
+                {{ settings.store_address }}
+              </span>
+            </li>
+          {%- endif -%}
+        </ul>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "עמוד 404",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_search",
+      "label": "הצגת שורת חיפוש",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "מחלקות"
+    },
+    {
+      "type": "text",
+      "id": "departments_heading",
+      "label": "כותרת",
+      "default": "אולי התכוונתם לאחת המחלקות האלה"
+    },
+    {
+      "type": "text",
+      "id": "departments_note",
+      "label": "כותרת משנה",
+      "default": "המחלקות המבוקשות באתר"
+    },
+    {
+      "type": "text",
+      "id": "departments",
+      "label": "מזהי הקטגוריות",
+      "info": "מזהה (handle) לכל קטגוריה, מופרדים בפסיק. קטגוריה שאינה קיימת פשוט לא תוצג.",
+      "default": "כלי-עבודה, שקעים-ומפסקים, תאורה, אינסטלציה"
+    },
+    {
+      "type": "header",
+      "content": "יצירת קשר"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_help",
+      "label": "הצגת שורת יצירת קשר",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "help_text",
+      "label": "טקסט",
+      "default": "לא מצאתם את מה שחיפשתם? דברו איתנו - 30+ שנה של ניסיון בחומרי בניין ואספקה טכנית."
+    }
+  ]
+}
+{% endschema %}

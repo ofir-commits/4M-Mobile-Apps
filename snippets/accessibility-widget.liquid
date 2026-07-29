@@ -1,0 +1,86 @@
+{%- comment -%}
+  In-theme accessibility widget — replaces the paid Sense RTL app's
+  accessibility block. (The app's other job, flipping an LTR theme to RTL with
+  a Hebrew font, is moot here: this theme is RTL-native with bundled Hebrew
+  fonts.)
+
+  Rendered once from layout/theme.liquid when settings.a11y_enabled is on.
+  Preferences persist in localStorage and are re-applied on every page by
+  assets/accessibility.js. The statement link comes from
+  settings.a11y_statement_link (Israeli accessibility regulations require an
+  accessibility statement page — the content itself is the owner's).
+{%- endcomment -%}
+
+{{ 'accessibility.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'accessibility.js' | asset_url }}" defer="defer"></script>
+
+<div class="a11y-widget" data-a11y-widget>
+  <button
+    type="button"
+    class="a11y-widget__toggle"
+    data-a11y-toggle
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    aria-controls="A11yPanel"
+    aria-label="{{ 'accessibility_widget.open' | t }}"
+    title="{{ 'accessibility_widget.title' | t }}"
+  >
+    {% render 'icon', name: 'accessibility', size: 26 %}
+  </button>
+
+  <div
+    id="A11yPanel"
+    class="a11y-widget__panel"
+    role="dialog"
+    aria-modal="false"
+    aria-label="{{ 'accessibility_widget.title' | t }}"
+    hidden
+  >
+    <div class="a11y-widget__head">
+      <h2 class="a11y-widget__title h5">{{ 'accessibility_widget.title' | t }}</h2>
+      <button type="button" class="btn-icon a11y-widget__close" data-a11y-close aria-label="{{ 'accessibility_widget.close' | t }}">
+        {% render 'icon', name: 'close', size: 18 %}
+      </button>
+    </div>
+
+    <div class="a11y-widget__grid">
+      <button type="button" class="a11y-widget__option" data-a11y-action="fontsize" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.font_size' | t }}</span>
+        <span class="a11y-widget__option-value" data-a11y-fontsize-value>100%</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="contrast" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.contrast' | t }}</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="grayscale" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.grayscale' | t }}</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="invert" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.invert' | t }}</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="links" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.links' | t }}</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="font" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.readable_font' | t }}</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="motion" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.stop_motion' | t }}</span>
+      </button>
+      <button type="button" class="a11y-widget__option" data-a11y-action="cursor" aria-pressed="false">
+        <span class="a11y-widget__option-label">{{ 'accessibility_widget.big_cursor' | t }}</span>
+      </button>
+    </div>
+
+    <div class="a11y-widget__foot">
+      <button type="button" class="btn btn--ghost btn--sm" data-a11y-reset>
+        {% render 'icon', name: 'refresh', size: 15 %}
+        {{ 'accessibility_widget.reset' | t }}
+      </button>
+      {%- if settings.a11y_statement_link != blank -%}
+        <a class="link a11y-widget__statement" href="{{ settings.a11y_statement_link }}">
+          {{ 'accessibility_widget.statement' | t }}
+        </a>
+      {%- endif -%}
+    </div>
+  </div>
+</div>

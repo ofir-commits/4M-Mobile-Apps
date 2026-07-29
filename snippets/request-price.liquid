@@ -1,0 +1,111 @@
+{%- comment -%}
+  Quote request for an unpriced product.
+
+  A slice of this catalogue is published at ₪0. Offering "add to cart" there
+  hands the item over for free, so the buy button is replaced with a real
+  enquiry: the built-in contact form (no app needed), plus one-tap phone and
+  WhatsApp with the product and SKU already filled in.
+
+  Usage: {% render 'request-price', product: product, variant: variant %}
+{%- endcomment -%}
+
+{%- liquid
+  assign target = variant | default: product.selected_or_first_available_variant
+  assign form_id = 'RequestPrice-' | append: product.id
+
+  assign tel_href = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+
+  assign wa_href = ''
+  if settings.store_whatsapp != blank
+    assign wa_scheme = settings.store_whatsapp | slice: 0, 4
+    if wa_scheme == 'http'
+      assign wa_href = settings.store_whatsapp
+    else
+      assign wa_digits = settings.store_whatsapp | remove: '+' | remove: '-' | remove: ' '
+      assign wa_href = 'https://wa.me/' | append: wa_digits
+    endif
+  endif
+-%}
+
+<div class="request-price">
+  <div class="request-price__head">
+    {% render 'icon', name: 'tag', size: 20 %}
+    <div>
+      <p class="request-price__title">{{ 'products.price.call_for_price' | t }}</p>
+      <p class="text-meta">
+        המחיר של הפריט הזה נקבע לפי כמות ודגם. השאירו טלפון או אימייל ונחזור אליכם
+        עם הצעת מחיר - או פשוט התקשרו, ונענה מיד.
+      </p>
+    </div>
+  </div>
+
+  <div class="request-price__actions">
+    {%- if settings.store_phone != blank -%}
+      <a class="btn btn--full" href="tel:{{ tel_href }}">
+        {% render 'icon', name: 'phone', size: 18 %}
+        <span dir="ltr">{{ settings.store_phone }}</span>
+      </a>
+    {%- endif -%}
+    {%- if wa_href != blank -%}
+      <a class="btn btn--outline btn--full" href="{{ wa_href }}" target="_blank" rel="noopener">
+        {% render 'icon', name: 'whatsapp', size: 18 %}
+        <span>שאלו בוואטסאפ</span>
+      </a>
+    {%- endif -%}
+  </div>
+
+  <details class="request-price__form-wrap">
+    <summary class="request-price__toggle">
+      <span>או שלחו בקשה להצעת מחיר</span>
+      {% render 'icon', name: 'chevron-down', size: 18, class: 'icon-chevron' %}
+    </summary>
+
+    {%- form 'contact', id: form_id, class: 'request-price__form' -%}
+      {%- if form.posted_successfully? -%}
+        <p class="form__success" role="status">
+          {% render 'icon', name: 'check-circle', size: 18 %}
+          קיבלנו את הבקשה - נחזור אליכם עם הצעת מחיר בהקדם.
+        </p>
+      {%- else -%}
+        {%- if form.errors -%}
+          <div class="errors" role="alert">{{ form.errors | default_errors }}</div>
+        {%- endif -%}
+
+        <input type="hidden" name="contact[נושא]" value="בקשת הצעת מחיר">
+        <input type="hidden" name="contact[מוצר]" value="{{ product.title | escape }}">
+        {%- if target.title != 'Default Title' -%}
+          <input type="hidden" name="contact[וריאנט]" value="{{ target.title | escape }}">
+        {%- endif -%}
+        {%- if target.sku != blank -%}
+          <input type="hidden" name="contact[מקט]" value="{{ target.sku | escape }}">
+        {%- endif -%}
+        <input type="hidden" name="contact[קישור]" value="{{ shop.url }}{{ product.url }}">
+
+        <div class="field">
+          <label class="field__label" for="{{ form_id }}-name">שם</label>
+          <input id="{{ form_id }}-name" class="field__input" type="text" name="contact[שם]" value="{{ form.name | default: customer.name }}" autocomplete="name" required>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="{{ form_id }}-email">אימייל</label>
+          <input id="{{ form_id }}-email" class="field__input" type="email" name="contact[email]" value="{{ form.email | default: customer.email }}" autocomplete="email" required>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="{{ form_id }}-phone">טלפון</label>
+          <input id="{{ form_id }}-phone" class="field__input" type="tel" name="contact[טלפון]" value="{{ form.phone | default: customer.phone }}" dir="ltr" autocomplete="tel">
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="{{ form_id }}-qty">כמות נדרשת</label>
+          <input id="{{ form_id }}-qty" class="field__input" type="text" name="contact[כמות]" dir="ltr" inputmode="numeric" placeholder="1">
+        </div>
+
+        <button type="submit" class="btn btn--secondary btn--full">
+          {% render 'icon', name: 'mail', size: 17 %}
+          שליחת הבקשה
+        </button>
+      {%- endif -%}
+    {%- endform -%}
+  </details>
+</div>

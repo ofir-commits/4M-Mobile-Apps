@@ -1,0 +1,210 @@
+/* =========================================================
+   Shilo Pro — Blog index (main-blog) + article cards
+   v2 "Clarity". Cards on the light canvas; base.css owns
+   .card / .media / .badge / .chip — this file adds layout only.
+   Contract: theme/DESIGN-SYSTEM.md.
+   ========================================================= */
+
+.blog-index { background-color: var(--color-page); }
+
+/* ---------- Index header ---------- */
+.blog-header {
+  padding-block: clamp(1.5rem, 3.5vw, 2.75rem) clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.blog-header__crumbs { margin-block-end: clamp(0.9rem, 2vw, 1.35rem); }
+
+.blog-header__heading { margin: 0; }
+
+.blog-header__subtitle {
+  margin-block-start: 0.85rem;
+  max-inline-size: 62ch;
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.blog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block-start: clamp(1.15rem, 2vw, 1.6rem);
+}
+
+.blog-tags .chip { min-block-size: 44px; }
+.blog-tags .chip .icon { margin-inline-start: 0.1rem; }
+
+/* ---------- Articles area ---------- */
+.blog-articles { padding-block: 0 clamp(2rem, 3.5vw, 3.5rem); }
+
+/* One column on small phones, 2 from 600px, 3 on desktop */
+.grid--3.blog-grid { grid-template-columns: minmax(0, 1fr); }
+
+@media (min-width: 600px) {
+  .grid--3.blog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 990px) {
+  .grid--3.blog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.blog-grid > li { display: flex; }
+.blog-grid > li > .article-card { inline-size: 100%; }
+
+.blog-empty { margin-block-start: clamp(1rem, 2vw, 1.5rem); }
+
+/* ---------- Article card (extends .card) ---------- */
+.article-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  block-size: 100%;
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) ease;
+}
+
+@media (hover: hover) {
+  .article-card:hover {
+    border-color: rgba(var(--color-accent-rgb), 0.35);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  .article-card:hover .article-card__media img { transform: scale(1.04); }
+}
+
+.article-card__media {
+  background: var(--color-surface-sunken);
+  border-block-end: 1px solid var(--color-border);
+}
+.article-card__media img { transition: transform var(--duration-base) var(--ease-out); }
+
+.article-card__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: clamp(0.95rem, 2vw, 1.25rem);
+  flex: 1;
+}
+
+.article-card__flag { align-self: flex-start; }
+
+.article-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.article-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 0;
+}
+.article-card__meta-item .icon { color: var(--color-accent); }
+
+.article-card__meta-item + .article-card__meta-item::before {
+  content: "";
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+  margin-inline-end: 0.4rem;
+}
+
+.article-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.article-card__title a {
+  text-decoration: none;
+  color: inherit;
+  transition: color var(--duration-fast) ease;
+}
+
+/* Stretched link — the whole card is one target */
+.article-card__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.article-card__title a:hover { color: var(--color-accent); }
+
+.article-card__excerpt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.94rem;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.article-card__footer {
+  margin-block-start: auto;
+  padding-block-start: 0.65rem;
+}
+
+.article-card__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-heading-family);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  white-space: nowrap;
+  transition: gap var(--duration-fast) ease;
+}
+
+.article-card:hover .article-card__more { gap: 0.6rem; }
+
+/* ---------- Featured (wide) card ---------- */
+.article-card--featured { margin-block-end: clamp(0.9rem, 2vw, 1.35rem); }
+
+.article-card--featured .article-card__title {
+  font-size: clamp(1.3rem, 1.05rem + 1vw, 1.8rem);
+  -webkit-line-clamp: 3;
+}
+
+@media (min-width: 750px) {
+  .article-card--featured {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    align-items: stretch;
+  }
+
+  .article-card--featured .article-card__media {
+    aspect-ratio: auto;
+    block-size: 100%;
+    min-block-size: 340px;
+    border-block-end: none;
+    border-inline-end: 1px solid var(--color-border);
+  }
+
+  .article-card--featured .article-card__content {
+    padding: clamp(1.5rem, 2.5vw, 2.5rem);
+    justify-content: center;
+    gap: 0.8rem;
+  }
+
+  .article-card--featured .article-card__excerpt {
+    font-size: 1rem;
+    -webkit-line-clamp: 4;
+  }
+}

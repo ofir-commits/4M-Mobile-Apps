@@ -1,0 +1,222 @@
+{%- comment -%}
+  Renders a product card. Markup mirrors the .product-card component in base.css
+  exactly — this snippet adds no styling of its own.
+
+  Usage: {% render 'product-card', product: product, lazy: true %}
+
+  Params:
+    product           {Object}  product object (renders a placeholder card when blank)
+    lazy              {Boolean} lazy-load images (default true — pass false above the fold)
+    sizes             {String}  override the responsive `sizes` attribute
+    show_vendor       {Boolean} override settings.card_show_vendor
+    show_quick_add    {Boolean} override settings.card_show_quick_add
+    show_sku          {Boolean} override the SKU meta line (default true)
+    class             {String}  extra classes
+    placeholder_index {Number}  1-6, varies the placeholder image
+{%- endcomment -%}
+{%- liquid
+  assign ratio_class = 'media--square'
+  if settings.card_image_ratio == 'portrait'
+    assign ratio_class = 'media--portrait'
+  endif
+
+  assign loading_attr = 'lazy'
+  assign fetch_priority = 'auto'
+  if lazy == false
+    assign loading_attr = 'eager'
+    assign fetch_priority = 'high'
+  endif
+
+  assign vendor_enabled = settings.card_show_vendor
+  unless show_vendor == nil
+    assign vendor_enabled = show_vendor
+  endunless
+
+  assign quick_add_enabled = settings.card_show_quick_add
+  unless show_quick_add == nil
+    assign quick_add_enabled = show_quick_add
+  endunless
+
+  assign sku_enabled = true
+  unless show_sku == nil
+    assign sku_enabled = show_sku
+  endunless
+
+  assign card_sizes = sizes | default: '(min-width: 1400px) 260px, (min-width: 1100px) 20vw, (min-width: 750px) 30vw, 46vw'
+-%}
+{%- if product != blank -%}
+  {%- liquid
+    assign card_variant = product.selected_or_first_available_variant
+
+    assign on_sale = false
+    if product.compare_at_price > product.price
+      assign on_sale = true
+    endif
+
+    assign is_new = false
+    if settings.new_badge_days > 0 and on_sale == false
+      assign now_stamp = 'now' | date: '%s' | plus: 0
+      assign created_stamp = product.created_at | date: '%s' | plus: 0
+      assign age_days = now_stamp | minus: created_stamp | divided_by: 86400
+      if age_days <= settings.new_badge_days
+        assign is_new = true
+      endif
+    endif
+
+    assign has_second_image = false
+    if settings.card_show_second_image and product.media.size > 1
+      assign has_second_image = true
+    endif
+
+    comment
+      Low stock is only meaningful when Shopify actually tracks inventory for the
+      variant. Untracked variants report inventory_quantity 0 forever.
+    endcomment
+    assign low_stock = false
+    assign low_stock_qty = 0
+    if settings.low_stock_threshold > 0 and product.available and card_variant.inventory_management != blank
+      assign low_stock_qty = card_variant.inventory_quantity
+      if low_stock_qty > 0 and low_stock_qty <= settings.low_stock_threshold
+        assign low_stock = true
+      endif
+    endif
+
+    assign card_sku = card_variant.sku | default: product.variants.first.sku
+  -%}
+  <article class="product-card{% if class %} {{ class }}{% endif %}">
+    <div class="product-card__media-wrap">
+      <div class="media {{ ratio_class }} media--contain product-card__media{% if has_second_image %} product-card__media--has-secondary{% endif %}">
+        {%- if product.featured_media -%}
+          <img
+            class="product-card__img--primary"
+            srcset="
+              {{ product.featured_media | image_url: width: 240 }} 240w,
+              {{ product.featured_media | image_url: width: 360 }} 360w,
+              {{ product.featured_media | image_url: width: 540 }} 540w,
+              {{ product.featured_media | image_url: width: 720 }} 720w
+            "
+            src="{{ product.featured_media | image_url: width: 540 }}"
+            sizes="{{ card_sizes }}"
+            alt="{{ product.featured_media.alt | default: product.title | escape }}"
+            loading="{{ loading_attr }}"
+            fetchpriority="{{ fetch_priority }}"
+            decoding="async"
+            width="{{ product.featured_media.width }}"
+            height="{{ product.featured_media.height }}"
+          >
+          {%- if has_second_image -%}
+            <img
+              class="product-card__img--secondary"
+              srcset="
+                {{ product.media[1] | image_url: width: 360 }} 360w,
+                {{ product.media[1] | image_url: width: 540 }} 540w
+              "
+              src="{{ product.media[1] | image_url: width: 540 }}"
+              sizes="{{ card_sizes }}"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              width="{{ product.media[1].width }}"
+              height="{{ product.media[1].height }}"
+              aria-hidden="true"
+            >
+          {%- endif -%}
+        {%- else -%}
+          {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+        {%- endif -%}
+      </div>
+
+      <div class="product-card__badges">
+        {%- if product.available == false -%}
+          <span class="badge badge--soldout">{{ 'products.product.sold_out' | t }}</span>
+        {%- elsif on_sale -%}
+          <span class="badge badge--sale">
+            {%- if settings.show_sale_badge_percent -%}
+              {%- assign discount = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round -%}
+              <span dir="ltr">-{{ discount }}%</span>
+            {%- else -%}
+              {{ 'products.product.on_sale' | t }}
+            {%- endif -%}
+          </span>
+        {%- elsif is_new -%}
+          <span class="badge badge--new">{{ 'products.product.new' | t }}</span>
+        {%- endif -%}
+        {% render 'product-labels', product: product, limit: 2 %}
+      </div>
+
+      {% render 'vendor-badge', product: product, size: 52, class: 'product-card__importer' %}
+
+      {%- if quick_add_enabled and product.available -%}
+        <div class="product-card__quick-add">
+          {%- if product.variants.size == 1 and product.selling_plan_groups.size == 0 -%}
+            <product-form>
+              <form method="post" action="{{ routes.cart_add_url }}" accept-charset="UTF-8" enctype="multipart/form-data">
+                <input type="hidden" name="form_type" value="product">
+                <input type="hidden" name="utf8" value="✓">
+                <input type="hidden" name="id" value="{{ card_variant.id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn--secondary btn--sm btn--full">
+                  {% render 'icon', name: 'cart-add', size: 17 %}
+                  <span>{{ 'products.product.add_to_cart' | t }}</span>
+                </button>
+              </form>
+            </product-form>
+          {%- else -%}
+            <a href="{{ product.url }}" class="btn btn--secondary btn--sm btn--full">
+              {{ 'products.product.choose_options' | t }}
+            </a>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="product-card__content">
+      {%- if vendor_enabled and product.vendor != blank -%}
+        <span class="product-card__vendor">{{ product.vendor }}</span>
+      {%- endif -%}
+
+      <h3 class="product-card__title">
+        <a href="{{ product.url }}">{{ product.title | escape }}</a>
+      </h3>
+
+      {%- if sku_enabled and card_sku != blank -%}
+        <span class="product-card__sku text-meta">
+          {{- 'products.product.sku' | t }} <span dir="ltr">{{ card_sku | escape }}</span>
+        </span>
+      {%- endif -%}
+
+      <div class="product-card__footer">
+        {% render 'price', product: product %}
+
+        {%- if settings.card_show_stock -%}
+          {%- if product.available == false -%}
+            <span class="stock-dot stock-dot--out">{{ 'products.product.out_of_stock' | t }}</span>
+          {%- elsif low_stock -%}
+            <span class="stock-dot stock-dot--low">{{ 'products.product.low_stock' | t: count: low_stock_qty }}</span>
+          {%- else -%}
+            <span class="stock-dot">{{ 'products.product.in_stock' | t }}</span>
+          {%- endif -%}
+        {%- endif -%}
+      </div>
+    </div>
+  </article>
+{%- else -%}
+  {%- liquid
+    assign ph = placeholder_index | default: 1
+    assign ph_name = 'product-' | append: ph
+  -%}
+  <article class="product-card{% if class %} {{ class }}{% endif %}" aria-hidden="true">
+    <div class="product-card__media-wrap">
+      <div class="media {{ ratio_class }} media--contain product-card__media">
+        {{ ph_name | placeholder_svg_tag: 'placeholder-svg' }}
+      </div>
+    </div>
+    <div class="product-card__content">
+      <span class="product-card__vendor">מותג לדוגמה</span>
+      <h3 class="product-card__title">מוצר לדוגמה</h3>
+      <div class="product-card__footer">
+        <div class="price"><span class="price__current" dir="ltr">{{ 14900 | money }}</span></div>
+      </div>
+    </div>
+  </article>
+{%- endif -%}

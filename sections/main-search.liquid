@@ -1,0 +1,573 @@
+{{ 'section-search-page.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%}
+  /search — the results page for a 1,918-SKU catalogue.
+
+  Shopify's storefront search only indexes products, pages and articles
+  (search.results never contains a collection), so the "קטגוריות" segment is an
+  in-page jump to the departments the current results actually live in, built
+  from the collections of the first few product matches. That is the useful
+  answer for a store with 186 departments: it tells the customer which aisle to
+  walk down next.
+{%- endcomment -%}
+
+{%- liquid
+  assign terms_escaped = search.terms | escape
+  assign terms_url = search.terms | url_param_escape
+  assign per_page = section.settings.results_per_page | default: 24
+
+  comment
+    The only server-readable state is search.types, so the active segment is
+    derived from it: no type param = every type ("הכל").
+  endcomment
+  assign active_tab = 'all'
+  assign type_param = ''
+  if search.performed and search.types.size > 0 and search.types.size < 3
+    assign type_param = search.types | join: ','
+    if search.types contains 'product'
+      assign active_tab = 'product'
+    else
+      assign active_tab = 'content'
+    endif
+  endif
+-%}
+
+{%- capture search_field -%}
+  <form action="{{ routes.search_url }}" method="get" role="search" class="search-page__form">
+    <div class="search-page__field">
+      <span class="search-page__field-icon" aria-hidden="true">
+        {% render 'icon', name: 'search', size: 20 %}
+      </span>
+      <label class="visually-hidden" for="SearchPageInput">{{ 'general.search.title' | t }}</label>
+      <input
+        id="SearchPageInput"
+        class="search-page__input"
+        type="search"
+        name="q"
+        value="{{ terms_escaped }}"
+        placeholder="{{ 'general.search.placeholder' | t }}"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        {% unless search.performed %}autofocus{% endunless %}
+      >
+      <button type="submit" class="search-page__submit">
+        {% render 'icon', name: 'search', size: 19 %}
+        <span class="search-page__submit-text">{{ 'general.search.submit' | t }}</span>
+      </button>
+    </div>
+  </form>
+{%- endcapture -%}
+
+{%- capture popular_chips -%}
+  {%- if section.settings.show_popular and settings.popular_searches != blank -%}
+    {%- assign popular_terms = settings.popular_searches | split: ',' -%}
+    <div class="search-page__block">
+      <p class="search-page__block-title">{{ 'general.search.popular' | t }}</p>
+      <ul class="search-page__chips" role="list">
+        {%- for term in popular_terms -%}
+          {%- assign term_clean = term | strip -%}
+          {%- if term_clean != blank -%}
+            <li>
+              <a class="chip" href="{{ routes.search_url }}?q={{ term_clean | url_param_escape }}">
+                {% render 'icon', name: 'search', size: 14 %}
+                {{ term_clean }}
+              </a>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- capture top_dept_chips -%}
+  {%- assign dept_handles = section.settings.departments | split: ',' -%}
+  {%- for handle in dept_handles -%}
+    {%- assign dept_handle = handle | strip -%}
+    {%- if dept_handle == blank -%}{%- continue -%}{%- endif -%}
+    {%- assign dept = collections[dept_handle] -%}
+    {%- if dept.title == blank -%}{%- continue -%}{%- endif -%}
+    <li>
+      <a class="chip" href="{{ dept.url }}">
+        {% render 'icon', name: 'layers', size: 14 %}
+        {{ dept.title | escape }}
+        <span class="chip--count">{{ dept.all_products_count }}</span>
+      </a>
+    </li>
+  {%- endfor -%}
+{%- endcapture -%}
+{%- assign top_dept_chips = top_dept_chips | strip -%}
+
+{%- capture top_dept_block -%}
+  {%- if top_dept_chips != blank -%}
+    <div class="search-page__block">
+      <p class="search-page__block-title">{{ section.settings.departments_heading | escape }}</p>
+      <ul class="search-page__chips" role="list">{{ top_dept_chips }}</ul>
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- capture search_tips -%}
+  {%- assign tip_lines = section.settings.search_tips | newline_to_br | split: '<br />' -%}
+  {%- for line in tip_lines -%}
+    {%- assign tip = line | strip -%}
+    {%- if tip != blank -%}
+      <li class="search-page__tip">{{ tip | escape }}</li>
+    {%- endif -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- assign search_tips = search_tips | strip -%}
+
+{%- if search.performed -%}
+  {%- paginate search.results by per_page -%}
+    {%- liquid
+      assign products_on_page = 0
+      assign content_on_page = 0
+      for item in search.results
+        if item.object_type == 'product'
+          assign products_on_page = products_on_page | plus: 1
+        else
+          assign content_on_page = content_on_page | plus: 1
+        endif
+      endfor
+
+      assign show_group_heads = false
+      if products_on_page > 0 and content_on_page > 0
+        assign show_group_heads = true
+      endif
+    -%}
+
+    {%- comment -%}
+      Departments of the top product matches. Only the first few products are
+      inspected so the extra lookup stays cheap on a catalogue this size.
+    {%- endcomment -%}
+    {%- capture result_dept_chips -%}
+      {%- if section.settings.show_result_departments -%}
+        {%- assign scanned = 0 -%}
+        {%- assign dept_keys = '' -%}
+        {%- assign dept_total = 0 -%}
+        {%- for item in search.results -%}
+          {%- if item.object_type != 'product' -%}{%- continue -%}{%- endif -%}
+          {%- assign scanned = scanned | plus: 1 -%}
+          {%- if scanned > 6 -%}{%- break -%}{%- endif -%}
+          {%- for dept in item.collections limit: 5 -%}
+            {%- if dept_total >= 8 -%}{%- break -%}{%- endif -%}
+            {%- assign dept_key = '|' | append: dept.handle | append: '|' -%}
+            {%- unless dept_keys contains dept_key -%}
+              {%- assign dept_keys = dept_keys | append: dept_key -%}
+              {%- assign dept_total = dept_total | plus: 1 -%}
+              <li>
+                <a class="chip" href="{{ dept.url }}">
+                  {% render 'icon', name: 'layers', size: 14 %}
+                  {{ dept.title | escape }}
+                  <span class="chip--count">{{ dept.all_products_count }}</span>
+                </a>
+              </li>
+            {%- endunless -%}
+          {%- endfor -%}
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endcapture -%}
+    {%- assign result_dept_chips = result_dept_chips | strip -%}
+
+    <section class="search-page">
+      <div class="search-page__head blueprint-field">
+        <div class="container">
+          <div class="search-page__head-inner">
+            <span class="text-eyebrow search-page__eyebrow">{{ 'general.search.title' | t }}</span>
+
+            <h1 class="search-page__title">
+              {%- if search.results_count > 0 -%}
+                {{ 'general.search.results_with_count' | t: count: search.results_count, terms: terms_escaped }}
+              {%- else -%}
+                {{ 'general.search.no_results' | t: terms: terms_escaped }}
+              {%- endif -%}
+            </h1>
+
+            {{ search_field }}
+
+            {%- if section.settings.show_type_filters -%}
+              <nav class="search-page__tabs" aria-label="{{ 'products.facets.filter_by_label' | t }}">
+                <a
+                  class="search-page__tab"
+                  href="{{ routes.search_url }}?q={{ terms_url }}"
+                  {% if active_tab == 'all' %}aria-current="page"{% endif %}
+                >
+                  {{- 'general.search.all' | t -}}
+                  {%- if active_tab == 'all' -%}
+                    <span class="search-page__tab-count" dir="ltr">{{ search.results_count }}</span>
+                  {%- endif -%}
+                </a>
+
+                <a
+                  class="search-page__tab"
+                  href="{{ routes.search_url }}?q={{ terms_url }}&amp;type=product"
+                  {% if active_tab == 'product' %}aria-current="page"{% endif %}
+                >
+                  {{- 'general.search.products' | t -}}
+                  {%- if active_tab == 'product' -%}
+                    <span class="search-page__tab-count" dir="ltr">{{ search.results_count }}</span>
+                  {%- endif -%}
+                </a>
+
+                {%- if result_dept_chips != blank -%}
+                  <a class="search-page__tab" href="#SearchDepartments">
+                    {{- 'general.search.collections' | t -}}
+                    <span class="search-page__tab-count" dir="ltr">{{ dept_total }}</span>
+                  </a>
+                {%- endif -%}
+
+                <a
+                  class="search-page__tab"
+                  href="{{ routes.search_url }}?q={{ terms_url }}&amp;type=page,article"
+                  {% if active_tab == 'content' %}aria-current="page"{% endif %}
+                >
+                  {{- 'general.search.pages' | t -}}
+                  {%- if active_tab == 'content' -%}
+                    <span class="search-page__tab-count" dir="ltr">{{ search.results_count }}</span>
+                  {%- endif -%}
+                </a>
+              </nav>
+            {%- endif -%}
+          </div>
+        </div>
+      </div>
+
+      <div class="container search-page__body" id="SearchResults">
+        {%- if search.results_count > 0 -%}
+          <div class="search-page__toolbar">
+            <p class="search-page__meta">
+              {{- 'products.facets.results_with_count' | t: count: search.results_count -}}
+              {%- if paginate.pages > 1 -%}
+                <span class="search-page__meta-sep" aria-hidden="true"> · </span>
+                {{- 'general.meta.page' | t: page: paginate.current_page -}}
+              {%- endif -%}
+            </p>
+
+            {%- if search.sort_options.size > 0 -%}
+              {%- assign sort_by = search.sort_by | default: search.default_sort_by -%}
+              <form class="search-page__sort" method="get" action="{{ routes.search_url }}" data-search-sort>
+                <input type="hidden" name="q" value="{{ terms_escaped }}">
+                {%- if type_param != blank -%}
+                  <input type="hidden" name="type" value="{{ type_param }}">
+                {%- endif -%}
+                <label class="search-page__sort-label" for="SearchSortBy">
+                  {{- 'products.facets.sort_by_label' | t -}}
+                </label>
+                <div class="select-wrap">
+                  <select id="SearchSortBy" class="select" name="sort_by">
+                    {%- for option in search.sort_options -%}
+                      {%- liquid
+                        comment
+                          Same Shopify-supplied option.name leak as the collection
+                          toolbar (see main-collection-product-grid.liquid): key on
+                          option.value, which is both the stable sort handle and the
+                          query parameter, and keep option.name as the fallback. The
+                          search page adds one value collections never emit —
+                          'relevance'.
+                        endcomment
+                        assign sort_key = 'products.facets.sort_options.' | append: option.value | replace: '-', '_'
+                        assign sort_label = sort_key | t
+                        if sort_label contains 'Translation missing'
+                          assign sort_label = option.name
+                        endif
+                      -%}
+                      <option value="{{ option.value }}" {% if option.value == sort_by %}selected{% endif %}>
+                        {{- sort_label | escape -}}
+                      </option>
+                    {%- endfor -%}
+                  </select>
+                  {% render 'icon', name: 'chevron-down', size: 16, class: 'icon-chevron' %}
+                </div>
+                <button type="submit" class="btn btn--sm btn--outline search-page__sort-apply">
+                  {{- 'products.facets.apply' | t -}}
+                </button>
+              </form>
+            {%- endif -%}
+          </div>
+
+          {%- if result_dept_chips != blank -%}
+            <div class="panel search-page__depts" id="SearchDepartments">
+              <div class="search-page__depts-head">
+                <h2 class="search-page__depts-title">{{ 'general.search.collections' | t }}</h2>
+                <span class="search-page__depts-note">{{ section.settings.departments_note | escape }}</span>
+              </div>
+              <ul class="search-page__chips" role="list">{{ result_dept_chips }}</ul>
+            </div>
+          {%- endif -%}
+
+          {%- if products_on_page > 0 -%}
+            <div class="search-page__group">
+              {%- if show_group_heads -%}
+                <div class="search-page__group-head">
+                  <h2 class="search-page__group-title">{{ 'general.search.products' | t }}</h2>
+                  <span class="badge badge--outline">
+                    {{- 'products.facets.product_count_simple' | t: count: products_on_page -}}
+                  </span>
+                </div>
+              {%- endif -%}
+
+              <ul class="grid grid--5" role="list">
+                {%- assign card_index = 0 -%}
+                {%- for item in search.results -%}
+                  {%- if item.object_type != 'product' -%}{%- continue -%}{%- endif -%}
+                  {%- liquid
+                    assign card_index = card_index | plus: 1
+                    assign card_lazy = true
+                    if paginate.current_page == 1 and card_index <= 5
+                      assign card_lazy = false
+                    endif
+                  -%}
+                  <li class="search-page__cell">
+                    {% render 'product-card', product: item, lazy: card_lazy %}
+                  </li>
+                {%- endfor -%}
+              </ul>
+            </div>
+          {%- endif -%}
+
+          {%- if content_on_page > 0 -%}
+            <div class="search-page__group">
+              {%- if show_group_heads -%}
+                <div class="search-page__group-head">
+                  <h2 class="search-page__group-title">{{ 'general.search.pages' | t }}</h2>
+                  <span class="badge badge--outline" dir="ltr">{{ content_on_page }}</span>
+                </div>
+              {%- endif -%}
+
+              <ul class="search-page__list" role="list">
+                {%- for item in search.results -%}
+                  {%- if item.object_type == 'product' -%}{%- continue -%}{%- endif -%}
+                  {%- liquid
+                    if item.object_type == 'article'
+                      assign kind_label = 'general.search.article' | t
+                      assign kind_icon = 'clipboard'
+                      assign excerpt = item.excerpt_or_content | strip_html | truncatewords: 24
+                    else
+                      assign kind_label = 'general.search.page' | t
+                      assign kind_icon = 'info'
+                      assign excerpt = item.content | strip_html | truncatewords: 24
+                    endif
+                  -%}
+                  <li class="card search-page__result">
+                    <span class="search-page__result-icon" aria-hidden="true">
+                      {% render 'icon', name: kind_icon, size: 19 %}
+                    </span>
+                    <div class="search-page__result-body">
+                      <span class="search-page__result-kind">{{ kind_label }}</span>
+                      <h3 class="search-page__result-title">
+                        <a href="{{ item.url }}">{{ item.title | escape }}</a>
+                      </h3>
+                      {%- if excerpt != blank -%}
+                        <p class="search-page__result-excerpt">{{ excerpt }}</p>
+                      {%- endif -%}
+                    </div>
+                  </li>
+                {%- endfor -%}
+              </ul>
+            </div>
+          {%- endif -%}
+
+          {% render 'pagination', paginate: paginate, anchor: '#SearchResults' %}
+        {%- else -%}
+          <div class="panel search-page__panel">
+            <span class="search-page__panel-icon" aria-hidden="true">
+              {% render 'icon', name: 'search', size: 28 %}
+            </span>
+
+            <div class="search-page__panel-head">
+              <h2 class="search-page__panel-title h3">
+                {{- 'general.search.no_results' | t: terms: terms_escaped -}}
+              </h2>
+              <p class="search-page__panel-text">{{ 'general.search.no_results_hint' | t }}</p>
+            </div>
+
+            {%- if search_tips != blank -%}
+              <div class="search-page__block">
+                <p class="search-page__block-title">{{ section.settings.tips_heading | escape }}</p>
+                <ul class="search-page__tips" role="list">{{ search_tips }}</ul>
+              </div>
+            {%- endif -%}
+
+            {{ popular_chips }}
+            {{ top_dept_block }}
+
+            <div class="search-page__block">
+              <p class="search-page__block-title">{{ section.settings.help_heading | escape }}</p>
+              <p class="search-page__panel-text">{{ section.settings.help_text | escape }}</p>
+              <div class="search-page__actions">
+                <a href="{{ routes.all_products_collection_url }}" class="btn">
+                  {{ 'general.error_404.button' | t }}
+                  {% render 'icon', name: 'arrow-right', size: 17, class: 'icon--dir' %}
+                </a>
+                {%- if settings.store_phone != blank -%}
+                  <a href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}" class="btn btn--outline">
+                    {% render 'icon', name: 'phone', size: 17 %}
+                    <span class="search-page__phone">{{ settings.store_phone }}</span>
+                  </a>
+                {%- endif -%}
+                {%- if settings.store_whatsapp != blank -%}
+                  <a href="{{ settings.store_whatsapp }}" class="btn btn--ghost" target="_blank" rel="noopener" aria-describedby="a11y-new-window-message">
+                    {% render 'icon', name: 'whatsapp', size: 17 %}
+                    {{ 'general.contact.whatsapp_cta' | t }}
+                  </a>
+                {%- endif -%}
+              </div>
+            </div>
+          </div>
+        {%- endif -%}
+      </div>
+    </section>
+  {%- endpaginate -%}
+{%- else -%}
+  <section class="search-page">
+    <div class="search-page__head blueprint-field">
+      <div class="container">
+        <div class="search-page__head-inner">
+          <span class="text-eyebrow search-page__eyebrow">{{ 'general.search.title' | t }}</span>
+          <h1 class="search-page__title">{{ section.settings.prompt_heading | escape }}</h1>
+          <p class="search-page__lead">{{ 'general.search.prompt' | t }}</p>
+          {{ search_field }}
+        </div>
+      </div>
+    </div>
+
+    <div class="container search-page__body">
+      <div class="panel search-page__panel">
+        {{ popular_chips }}
+        {{ top_dept_block }}
+
+        {%- if search_tips != blank -%}
+          <div class="search-page__block">
+            <p class="search-page__block-title">{{ section.settings.tips_heading | escape }}</p>
+            <ul class="search-page__tips" role="list">{{ search_tips }}</ul>
+          </div>
+        {%- endif -%}
+
+        <div class="search-page__block">
+          <div class="search-page__actions">
+            <a href="{{ routes.all_products_collection_url }}" class="btn">
+              {{ 'general.error_404.button' | t }}
+              {% render 'icon', name: 'arrow-right', size: 17, class: 'icon--dir' %}
+            </a>
+            <a href="{{ routes.collections_url }}" class="btn btn--outline">
+              {% render 'icon', name: 'grid', size: 17 %}
+              {{ 'general.breadcrumbs.collections' | t }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{%- endif -%}
+
+<script>
+  (function () {
+    'use strict';
+    var form = document.querySelector('[data-search-sort]');
+    if (!form) return;
+    var select = form.querySelector('select');
+    if (!select) return;
+    select.addEventListener('change', function () {
+      form.submit();
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "עמוד חיפוש",
+  "settings": [
+    {
+      "type": "range",
+      "id": "results_per_page",
+      "label": "תוצאות בעמוד",
+      "min": 12,
+      "max": 48,
+      "step": 4,
+      "default": 24
+    },
+    {
+      "type": "checkbox",
+      "id": "show_type_filters",
+      "label": "הצגת מסננים לפי סוג תוצאה",
+      "info": "מוצרים / קטגוריות / עמודים.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_result_departments",
+      "label": "הצגת המחלקות של התוצאות",
+      "info": "רצועת קישורים למחלקות שבהן נמצאו המוצרים - עוזרת לצמצם חיפוש רחב.",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "departments_note",
+      "label": "הסבר לרצועת המחלקות",
+      "default": "המחלקות שבהן נמצאו התוצאות"
+    },
+    {
+      "type": "header",
+      "content": "כשאין תוצאות"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_popular",
+      "label": "הצגת חיפושים פופולריים",
+      "info": "רשימת החיפושים מוגדרת בהגדרות התבנית, תחת \"חיפוש\".",
+      "default": true
+    },
+    {
+      "type": "textarea",
+      "id": "search_tips",
+      "label": "טיפים לחיפוש",
+      "info": "שורה אחת לכל טיפ.",
+      "default": "בדקו את האיות, או חפשו במילה כללית יותר - למשל \"מברגה\" במקום דגם מדויק.\nמחפשים פריט מסוים? הקלידו את המק\"ט או את מספר הדגם.\nאפשר לחפש גם לפי שם המותג: מקיטה, קרשר, סימנס, גרואה."
+    },
+    {
+      "type": "text",
+      "id": "tips_heading",
+      "label": "כותרת הטיפים",
+      "default": "איך למצוא מהר יותר"
+    },
+    {
+      "type": "text",
+      "id": "prompt_heading",
+      "label": "כותרת לפני חיפוש",
+      "default": "מה מחפשים היום?"
+    },
+    {
+      "type": "text",
+      "id": "help_heading",
+      "label": "כותרת אזור העזרה",
+      "default": "לא מצאתם? נעזור לכם"
+    },
+    {
+      "type": "text",
+      "id": "help_text",
+      "label": "טקסט אזור העזרה",
+      "default": "המחסן שלנו גדול מהאתר. ספרו לנו מה אתם צריכים - יותר מ-30 שנה בענף הבנייה, ואנחנו כמעט תמיד מצליחים להשיג."
+    },
+    {
+      "type": "header",
+      "content": "מחלקות מובילות"
+    },
+    {
+      "type": "text",
+      "id": "departments_heading",
+      "label": "כותרת",
+      "default": "מחלקות מובילות"
+    },
+    {
+      "type": "text",
+      "id": "departments",
+      "label": "מזהי הקטגוריות",
+      "info": "מזהה (handle) לכל קטגוריה, מופרדים בפסיק. קטגוריה שאינה קיימת פשוט לא תוצג.",
+      "default": "כלי-עבודה, שקעים-ומפסקים, תאורה, אינסטלציה, צבע, עץ"
+    }
+  ]
+}
+{% endschema %}

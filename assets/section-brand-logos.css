@@ -1,0 +1,45 @@
+/* =========================================================
+   Shilo Pro — Brand logos grid (v2 "Clarity")
+   Layout only. The tile itself is the .brand-tile component
+   from base.css — do not restyle it here.
+   3 across on mobile, 6 across from 990px.
+   ========================================================= */
+
+.brand-logos__header {
+  margin-block-end: clamp(1.25rem, 2.5vw, 2rem);
+  text-align: center;
+}
+
+.brand-logos__heading {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.brand-logos__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.6rem, 1.3vw, 1rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 990px) {
+  .brand-logos__grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.brand-logos__item {
+  display: flex;
+  min-inline-size: 0;
+}
+
+/* The tile fills its grid cell so every row lines up. */
+.brand-logos__item > .brand-tile { inline-size: 100%; }
+
+/* A tile without a link is not interactive — drop the hover affordance. */
+.brand-logos__tile--static { cursor: default; }
+.brand-logos__tile--static:hover {
+  border-color: var(--color-border);
+  box-shadow: none;
+  transform: none;
+}

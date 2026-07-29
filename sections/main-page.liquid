@@ -1,0 +1,156 @@
+{{ 'section-page.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%}
+  Static page template: one calm reading column. Per-page hero images are set
+  per template — duplicate this template in the editor ("עמוד" → תבנית חדשה)
+  and pick an image there, so each page keeps its own.
+{%- endcomment -%}
+{%- liquid
+  assign width_class = 'container--text'
+  if section.settings.content_width == 'wide'
+    assign width_class = 'container--narrow'
+  endif
+
+  assign hero = section.settings.image
+-%}
+
+<section class="section main-page">
+  <div class="container {{ width_class }}">
+    {%- if settings.show_breadcrumbs -%}
+      <nav class="breadcrumbs main-page__crumbs" aria-label="{{ 'general.breadcrumbs.label' | t }}">
+        <a href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">
+          {% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}
+        </span>
+        <span class="breadcrumbs__current" aria-current="page">{{ page.title | escape }}</span>
+      </nav>
+    {%- endif -%}
+
+    {%- if section.settings.show_title -%}
+      <header class="main-page__head">
+        <h1 class="main-page__title blueprint-underline">{{ page.title | escape }}</h1>
+        {%- if section.settings.lead != blank -%}
+          <p class="main-page__lead">{{ section.settings.lead | escape }}</p>
+        {%- endif -%}
+      </header>
+    {%- endif -%}
+
+    {%- if hero != blank -%}
+      <figure class="main-page__figure">
+        <div class="media media--landscape main-page__media">
+          <img
+            srcset="
+              {{ hero | image_url: width: 700 }} 700w,
+              {{ hero | image_url: width: 1000 }} 1000w,
+              {{ hero | image_url: width: 1400 }} 1400w
+            "
+            src="{{ hero | image_url: width: 1000 }}"
+            sizes="(min-width: 750px) 720px, 100vw"
+            alt="{{ hero.alt | default: page.title | escape }}"
+            width="{{ hero.width }}"
+            height="{{ hero.height }}"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          >
+        </div>
+        {%- if section.settings.image_caption != blank -%}
+          <figcaption class="main-page__caption">{{ section.settings.image_caption | escape }}</figcaption>
+        {%- endif -%}
+      </figure>
+    {%- endif -%}
+
+    {%- if page.content != blank -%}
+      <div class="main-page__content">
+        <div class="rte">
+          {{ page.content }}
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- if section.settings.show_contact_footer -%}
+      <div class="main-page__footer">
+        <p class="main-page__footer-text">{{ section.settings.contact_text | escape }}</p>
+        {%- if settings.store_phone != blank -%}
+          <a href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}" class="btn btn--outline btn--sm">
+            {% render 'icon', name: 'phone', size: 16 %}
+            <span class="main-page__phone">{{ settings.store_phone }}</span>
+          </a>
+        {%- endif -%}
+        {%- if settings.store_whatsapp != blank -%}
+          <a
+            href="{{ settings.store_whatsapp }}"
+            class="btn btn--ghost btn--sm"
+            target="_blank"
+            rel="noopener"
+            aria-describedby="a11y-new-window-message"
+          >
+            {% render 'icon', name: 'whatsapp', size: 16 %}
+            {{ 'general.contact.whatsapp_cta' | t }}
+          </a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "עמוד תוכן",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "הצגת כותרת העמוד",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "content_width",
+      "label": "רוחב עמודת התוכן",
+      "options": [
+        { "value": "text", "label": "צר - נוח לקריאה" },
+        { "value": "wide", "label": "רחב" }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "text",
+      "id": "lead",
+      "label": "תקציר מתחת לכותרת",
+      "info": "אופציונלי. שורה או שתיים שמסבירות במה העמוד עוסק."
+    },
+    {
+      "type": "header",
+      "content": "תמונה"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "תמונת פתיחה",
+      "info": "התמונה משותפת לכל העמודים שמשתמשים בתבנית הזו. לתמונה נפרדת - צרו תבנית עמוד חדשה."
+    },
+    {
+      "type": "text",
+      "id": "image_caption",
+      "label": "כתובית לתמונה"
+    },
+    {
+      "type": "header",
+      "content": "פנייה בתחתית העמוד"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_contact_footer",
+      "label": "הצגת שורת יצירת קשר",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "contact_text",
+      "label": "טקסט",
+      "default": "יש שאלה? הצוות שלנו בחנות בקיבוץ קרית ענבים ישמח לעזור."
+    }
+  ]
+}
+{% endschema %}

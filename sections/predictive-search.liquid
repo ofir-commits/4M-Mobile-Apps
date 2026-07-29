@@ -1,0 +1,250 @@
+{%- comment -%}
+  predictive-search — rendered through the Section Rendering API only, from two
+  different URLs. That is why there are two branches: exactly one of the two Liquid
+  objects is populated in each case, and neither is populated on a normal render.
+
+  1. {{ routes.search_url }}?q=…&type=product&options[prefix]=last&section_id=predictive-search
+     The Hebrew path, and the one that actually runs on this store. The Predictive
+     Search API is language-gated and Hebrew is not on its supported list, so
+     /search/suggest can never return a product here. Rendered against /search,
+     `search` is populated and `predictive_search` is not. Storefront search has no
+     language gate, and options[prefix]=last gives the letter-by-letter partial
+     match on the term being typed.
+     Storefront search only supports type=product, page and article — it cannot
+     return collections — so the קטגוריות group below is unreachable on this path.
+
+  2. {{ routes.predictive_search_url }}?q=…&section_id=predictive-search
+     Kept for the day Shopify adds Hebrew. section-header.js switches to it on its
+     own when #shopify-features reports predictiveSearch: true. There
+     `predictive_search` is populated and `search` is not.
+
+  section-header.js injects the innerHTML of #PredictiveSearchResults into the
+  header search panel and copies [data-search-count] into the panel's status node.
+  Styles live in assets/section-search.css.
+  Do not give this section settings: the Section Rendering API cannot pass them.
+{%- endcomment -%}
+
+<div id="PredictiveSearchResults" class="predictive-results">
+  {%- if predictive_search.performed -%}
+    {%- liquid
+      assign terms_escaped = predictive_search.terms | escape
+      assign products = predictive_search.resources.products
+      assign collections = predictive_search.resources.collections
+      assign pages = predictive_search.resources.pages
+      assign articles = predictive_search.resources.articles
+      assign total_results = products.size | plus: collections.size | plus: pages.size | plus: articles.size
+    -%}
+
+    {%- if total_results > 0 -%}
+      <span class="visually-hidden" data-search-count>
+        {{- 'products.facets.results_with_count' | t: count: total_results -}}
+      </span>
+
+      {%- if products.size > 0 -%}
+        <div class="predictive-results__group">
+          <h3 class="predictive-results__heading" id="PredictiveResultsProducts">{{ 'general.search.products' | t }}</h3>
+          <ul class="predictive-results__list" role="list" aria-labelledby="PredictiveResultsProducts">
+            {%- for product in products limit: 6 -%}
+              <li>
+                <a href="{{ product.url }}" class="predictive-results__product">
+                  <span class="predictive-results__media media media--square media--contain">
+                    {%- if product.featured_image -%}
+                      <img
+                        src="{{ product.featured_image | image_url: width: 128 }}"
+                        srcset="{{ product.featured_image | image_url: width: 64 }} 1x, {{ product.featured_image | image_url: width: 128 }} 2x"
+                        alt="{{ product.featured_image.alt | default: product.title | escape }}"
+                        width="56"
+                        height="56"
+                        loading="lazy"
+                      >
+                    {%- else -%}
+                      {%- assign placeholder_index = forloop.index | modulo: 6 | plus: 1 -%}
+                      {{ 'product-' | append: placeholder_index | placeholder_svg_tag: 'placeholder-svg' }}
+                    {%- endif -%}
+                  </span>
+
+                  <span class="predictive-results__info">
+                    {%- if product.vendor != blank -%}
+                      <span class="predictive-results__vendor">{{ product.vendor }}</span>
+                    {%- endif -%}
+                    <span class="predictive-results__title">{{ product.title | escape }}</span>
+                    {% render 'price', product: product, class: 'predictive-results__price' %}
+                  </span>
+
+                  <span class="predictive-results__aside">
+                    {%- if product.available -%}
+                      {% render 'icon', name: 'arrow-right', size: 16, class: 'icon--dir predictive-results__arrow' %}
+                    {%- else -%}
+                      <span class="badge badge--soldout">{{ 'products.product.sold_out' | t }}</span>
+                    {%- endif -%}
+                  </span>
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+
+      {%- if collections.size > 0 -%}
+        <div class="predictive-results__group">
+          <h3 class="predictive-results__heading" id="PredictiveResultsCollections">{{ 'general.search.collections' | t }}</h3>
+          <ul class="predictive-results__links" role="list" aria-labelledby="PredictiveResultsCollections">
+            {%- for collection in collections limit: 6 -%}
+              <li>
+                <a class="predictive-results__link" href="{{ collection.url }}">
+                  <span class="predictive-results__link-icon">{% render 'icon', name: 'layers', size: 16 %}</span>
+                  <span class="predictive-results__link-title">{{ collection.title | escape }}</span>
+                  {% render 'icon', name: 'arrow-right', size: 15, class: 'icon--dir predictive-results__arrow' %}
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+
+      {%- if pages.size > 0 -%}
+        <div class="predictive-results__group">
+          <h3 class="predictive-results__heading" id="PredictiveResultsPages">{{ 'general.search.pages' | t }}</h3>
+          <ul class="predictive-results__links" role="list" aria-labelledby="PredictiveResultsPages">
+            {%- for page in pages limit: 4 -%}
+              <li>
+                <a class="predictive-results__link" href="{{ page.url }}">
+                  <span class="predictive-results__link-icon">{% render 'icon', name: 'info', size: 16 %}</span>
+                  <span class="predictive-results__link-title">{{ page.title | escape }}</span>
+                  {% render 'icon', name: 'arrow-right', size: 15, class: 'icon--dir predictive-results__arrow' %}
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+
+      {%- if articles.size > 0 -%}
+        <div class="predictive-results__group">
+          <h3 class="predictive-results__heading" id="PredictiveResultsArticles">{{ 'general.search.articles' | t }}</h3>
+          <ul class="predictive-results__links" role="list" aria-labelledby="PredictiveResultsArticles">
+            {%- for article in articles limit: 4 -%}
+              <li>
+                <a class="predictive-results__link" href="{{ article.url }}">
+                  <span class="predictive-results__link-icon">{% render 'icon', name: 'tag', size: 16 %}</span>
+                  <span class="predictive-results__link-title">{{ article.title | escape }}</span>
+                  {% render 'icon', name: 'arrow-right', size: 15, class: 'icon--dir predictive-results__arrow' %}
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%}
+        options[prefix]=last is carried over to the full results page so it shows the
+        same partial matches the dropdown just promised.
+      {%- endcomment -%}
+      <a class="btn btn--outline btn--sm btn--full predictive-results__all" href="{{ routes.search_url }}?q={{ predictive_search.terms | url_param_escape }}&amp;options[prefix]=last">
+        {{ 'general.search.view_all' | t }}
+        {% render 'icon', name: 'arrow-right', size: 16, class: 'icon--dir' %}
+      </a>
+    {%- else -%}
+      <div class="predictive-results__empty">
+        {% render 'icon', name: 'search', size: 30 %}
+        <p class="predictive-results__empty-title">{{ 'general.search.no_results' | t: terms: terms_escaped }}</p>
+        <p class="predictive-results__empty-hint">{{ 'general.search.no_results_hint' | t }}</p>
+      </div>
+    {%- endif -%}
+
+  {%- elsif search.performed -%}
+    {%- assign terms_escaped = search.terms | escape -%}
+
+    {%- comment -%}
+      paginate bounds the server-side query, and that is the whole reason it is here:
+      a single Hebrew letter can match hundreds of the ~1,900 SKUs and this section is
+      fetched on every typing pause, so an unbounded search.results loop — not the
+      rendering — would be the latency risk. Twelve is enough to fill the six rows
+      below even if Shopify's ranking mixes non-products in.
+    {%- endcomment -%}
+    {%- paginate search.results by 12 -%}
+      {%- liquid
+        # search.results is a mixed list (product / page / article), and Liquid has no
+        # push filter to build a products-only array with, so counting first and then
+        # skipping non-products in the render loop is the way to know whether there is
+        # anything to show at all.
+        assign product_total = 0
+        for item in search.results
+          if item.object_type == 'product'
+            assign product_total = product_total | plus: 1
+          endif
+        endfor
+      -%}
+
+      {%- if product_total > 0 -%}
+        <span class="visually-hidden" data-search-count>
+          {{- 'products.facets.results_with_count' | t: count: search.results_count -}}
+        </span>
+
+        <div class="predictive-results__group">
+          <h3 class="predictive-results__heading" id="PredictiveResultsProducts">{{ 'general.search.products' | t }}</h3>
+          <ul class="predictive-results__list" role="list" aria-labelledby="PredictiveResultsProducts">
+            {%- assign shown = 0 -%}
+            {%- for item in search.results -%}
+              {%- if item.object_type != 'product' -%}{%- continue -%}{%- endif -%}
+              {%- if shown >= 6 -%}{%- break -%}{%- endif -%}
+              {%- assign shown = shown | plus: 1 -%}
+              <li>
+                <a href="{{ item.url }}" class="predictive-results__product">
+                  <span class="predictive-results__media media media--square media--contain">
+                    {%- if item.featured_image -%}
+                      <img
+                        src="{{ item.featured_image | image_url: width: 128 }}"
+                        srcset="{{ item.featured_image | image_url: width: 64 }} 1x, {{ item.featured_image | image_url: width: 128 }} 2x"
+                        alt="{{ item.featured_image.alt | default: item.title | escape }}"
+                        width="56"
+                        height="56"
+                        loading="lazy"
+                      >
+                    {%- else -%}
+                      {%- assign placeholder_index = shown | modulo: 6 | plus: 1 -%}
+                      {{ 'product-' | append: placeholder_index | placeholder_svg_tag: 'placeholder-svg' }}
+                    {%- endif -%}
+                  </span>
+
+                  <span class="predictive-results__info">
+                    {%- if item.vendor != blank -%}
+                      <span class="predictive-results__vendor">{{ item.vendor }}</span>
+                    {%- endif -%}
+                    <span class="predictive-results__title">{{ item.title | escape }}</span>
+                    {% render 'price', product: item, class: 'predictive-results__price' %}
+                  </span>
+
+                  <span class="predictive-results__aside">
+                    {%- if item.available -%}
+                      {% render 'icon', name: 'arrow-right', size: 16, class: 'icon--dir predictive-results__arrow' %}
+                    {%- else -%}
+                      <span class="badge badge--soldout">{{ 'products.product.sold_out' | t }}</span>
+                    {%- endif -%}
+                  </span>
+                </a>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+
+        <a class="btn btn--outline btn--sm btn--full predictive-results__all" href="{{ routes.search_url }}?q={{ search.terms | url_param_escape }}&amp;options[prefix]=last">
+          {{ 'general.search.view_all' | t }}
+          {% render 'icon', name: 'arrow-right', size: 16, class: 'icon--dir' %}
+        </a>
+      {%- else -%}
+        <div class="predictive-results__empty">
+          {% render 'icon', name: 'search', size: 30 %}
+          <p class="predictive-results__empty-title">{{ 'general.search.no_results' | t: terms: terms_escaped }}</p>
+          <p class="predictive-results__empty-hint">{{ 'general.search.no_results_hint' | t }}</p>
+        </div>
+      {%- endif -%}
+    {%- endpaginate -%}
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "חיפוש מהיר (תוצאות)"
+}
+{% endschema %}

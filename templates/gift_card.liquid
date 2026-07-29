@@ -1,0 +1,582 @@
+{% layout none %}
+{%- liquid
+  assign rtl_locales = 'he,ar'
+  assign is_rtl = false
+  if rtl_locales contains request.locale.iso_code
+    assign is_rtl = true
+  endif
+
+  assign formatted_balance = gift_card.balance | money
+  assign formatted_initial = gift_card.initial_value | money
+
+  assign is_expired = false
+  if gift_card.expired or gift_card.enabled != true
+    assign is_expired = true
+  endif
+
+  assign partially_used = false
+  if gift_card.balance != gift_card.initial_value
+    assign partially_used = true
+  endif
+-%}
+<!doctype html>
+<html class="no-js" lang="{{ request.locale.iso_code }}" {% if is_rtl %}dir="rtl"{% else %}dir="ltr"{% endif %}>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="{{ settings.color_ink }}">
+    <meta name="robots" content="noindex">
+    <title>{{ 'gift_cards.issued.title' | t }} &ndash; {{ shop.name }}</title>
+
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 96, height: 96 }}">
+    {%- endif -%}
+
+    <link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
+
+    {%- unless settings.use_shopify_fonts -%}
+      {{ 'assistant-var-hebrew.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
+      {{ 'heebo-var-hebrew.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
+    {%- endunless -%}
+
+    {{ content_for_header }}
+
+    <style>
+      {%- comment -%} Same self-hosted Hebrew type as layout/theme.liquid. {%- endcomment -%}
+      {%- unless settings.use_shopify_fonts -%}
+        @font-face {
+          font-family: 'Assistant';
+          font-style: normal;
+          font-weight: 300 800;
+          font-display: swap;
+          src: url({{ 'assistant-var-hebrew.woff2' | asset_url }}) format('woff2');
+          unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+        }
+        @font-face {
+          font-family: 'Assistant';
+          font-style: normal;
+          font-weight: 300 800;
+          font-display: swap;
+          src: url({{ 'assistant-var-latin.woff2' | asset_url }}) format('woff2');
+          unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+        @font-face {
+          font-family: 'Heebo';
+          font-style: normal;
+          font-weight: 300 900;
+          font-display: swap;
+          src: url({{ 'heebo-var-hebrew.woff2' | asset_url }}) format('woff2');
+          unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+        }
+        @font-face {
+          font-family: 'Heebo';
+          font-style: normal;
+          font-weight: 300 900;
+          font-display: swap;
+          src: url({{ 'heebo-var-latin.woff2' | asset_url }}) format('woff2');
+          unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+      {%- endunless -%}
+
+      {%- if settings.use_shopify_fonts -%}
+        {%- assign body_font_bold = settings.font_body | font_modify: 'weight', '700' -%}
+        {{ settings.font_body | font_face: font_display: 'swap' }}
+        {{ body_font_bold | font_face: font_display: 'swap' }}
+        {{ settings.font_heading | font_face: font_display: 'swap' }}
+      {%- endif -%}
+
+      :root {
+        {%- if settings.use_shopify_fonts -%}
+          --font-body-family: {{ settings.font_body.family }}, "Assistant", "Segoe UI", Arial, sans-serif;
+          --font-body-weight: {{ settings.font_body.weight | default: 400 }};
+          --font-heading-family: {{ settings.font_heading.family }}, "Heebo", "Segoe UI", Arial, sans-serif;
+          --font-heading-weight: {{ settings.font_heading.weight | default: 700 }};
+        {%- else -%}
+          --font-body-family: "Assistant", "Heebo", "Segoe UI", Arial, sans-serif;
+          --font-body-weight: 400;
+          --font-heading-family: "Heebo", "Assistant", "Segoe UI", Arial, sans-serif;
+          --font-heading-weight: 800;
+        {%- endif -%}
+        --font-heading-scale: {{ settings.heading_scale | default: 100 | divided_by: 100.0 }};
+        --font-body-scale: {{ settings.body_scale | default: 100 | divided_by: 100.0 }};
+
+        --color-accent: {{ settings.color_accent }};
+        --color-accent-hover: {{ settings.color_accent_hover }};
+        --color-accent-rgb: {{ settings.color_accent.rgb | replace: ' ', ', ' }};
+        --color-accent-soft: {{ settings.color_accent | color_mix: '#ffffff', 8 }};
+        --color-accent-tint: {{ settings.color_accent | color_mix: '#ffffff', 14 }};
+
+        --color-ink: {{ settings.color_ink }};
+        --color-ink-rgb: {{ settings.color_ink.rgb | replace: ' ', ', ' }};
+        --color-ink-soft: {{ settings.color_ink | color_lighten: 7 }};
+
+        --color-bg: {{ settings.color_background }};
+        --color-surface: {{ settings.color_background }};
+        --color-page: {{ settings.color_page }};
+        --color-surface-alt: {{ settings.color_surface_alt }};
+        --color-surface-sunken: {{ settings.color_surface_sunken }};
+
+        --color-text: {{ settings.color_text }};
+        --color-text-rgb: {{ settings.color_text.rgb | replace: ' ', ', ' }};
+        --color-text-muted: {{ settings.color_text_muted }};
+
+        --color-border: {{ settings.color_border }};
+        --color-border-strong: {{ settings.color_border_strong }};
+
+        --color-success: {{ settings.color_success }};
+        --color-warning: {{ settings.color_warning }};
+        --color-danger: {{ settings.color_danger }};
+        --color-sale: {{ settings.color_sale }};
+        --color-highlight: {{ settings.color_highlight }};
+
+        --color-on-accent: #ffffff;
+        --color-on-ink: #eef1f6;
+
+        {%- case settings.corner_style -%}
+          {%- when 'sharp' -%}
+            --radius-sm: 0px;
+            --radius-base: 0px;
+            --radius-card: 0px;
+            --radius-lg: 0px;
+            --radius-pill: 4px;
+          {%- when 'round' -%}
+            --radius-sm: 10px;
+            --radius-base: 14px;
+            --radius-card: 22px;
+            --radius-lg: 28px;
+            --radius-pill: 999px;
+          {%- else -%}
+            --radius-sm: 8px;
+            --radius-base: 10px;
+            --radius-card: 16px;
+            --radius-lg: 22px;
+            --radius-pill: 999px;
+        {%- endcase -%}
+
+        --page-width: {{ settings.page_width | default: 1400 }}px;
+        --page-gutter: clamp(1rem, 3vw, 2.5rem);
+
+        --shadow-xs: 0 1px 2px rgba(var(--color-ink-rgb), 0.05);
+        --shadow-sm: 0 1px 3px rgba(var(--color-ink-rgb), 0.06), 0 1px 2px rgba(var(--color-ink-rgb), 0.04);
+        --shadow-md: 0 6px 16px -4px rgba(var(--color-ink-rgb), 0.10), 0 2px 6px -2px rgba(var(--color-ink-rgb), 0.06);
+        --shadow-lg: 0 24px 48px -16px rgba(var(--color-ink-rgb), 0.24), 0 6px 16px -8px rgba(var(--color-ink-rgb), 0.10);
+
+        --blueprint-line: rgba(var(--color-ink-rgb), 0.06);
+
+        --duration-fast: 140ms;
+        --duration-base: 240ms;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+      }
+    </style>
+
+    {{ 'base.css' | asset_url | stylesheet_tag }}
+
+    <style>
+      /* ---------- Gift card page: layout only, tokens for everything else ---------- */
+      body.template-gift-card {
+        background-color: var(--color-page);
+        align-items: center;
+        justify-content: center;
+        gap: clamp(1.25rem, 3vw, 2rem);
+        padding: clamp(1.25rem, 4vw, 3rem) var(--page-gutter);
+        text-align: center;
+      }
+
+      .gc__brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .gc__logo { inline-size: auto; block-size: auto; max-inline-size: min(190px, 56vw); }
+
+      .gc__shopname {
+        font-family: var(--font-heading-family);
+        font-weight: 800;
+        font-size: calc(1.35rem * var(--font-heading-scale));
+        color: var(--color-ink);
+      }
+
+      .gc__card {
+        inline-size: min(430px, 100%);
+        overflow: hidden;
+        padding: 0;
+        text-align: center;
+      }
+
+      /* Ink head with the blueprint grid — the v2 replacement for the striped bar */
+      .gc__head {
+        padding: clamp(1rem, 3.5vw, 1.35rem);
+        background-color: var(--color-ink);
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+        background-size: 40px 40px, 40px 40px;
+      }
+
+      .gc__title { margin: 0; color: #fff; font-size: calc(1.2rem * var(--font-heading-scale)); }
+
+      .gc__body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.05rem;
+        padding: clamp(1.35rem, 4vw, 1.85rem);
+      }
+
+      .gc__balance {
+        margin: 0;
+        font-family: var(--font-heading-family);
+        font-weight: 800;
+        font-size: calc(clamp(2.4rem, 12vw, 3.2rem) * var(--font-heading-scale));
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        color: var(--color-accent);
+      }
+
+      .gc__balance--expired { color: var(--color-text-muted); text-decoration: line-through; }
+
+      .gc__amounts { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+
+      .gc__initial {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+      }
+
+      .gc__initial-value { text-decoration: line-through; }
+
+      .gc__subtext { margin: 0; color: var(--color-text-muted); font-size: 0.95rem; }
+
+      /* ---------- QR ---------- */
+      .gc__qr {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.7rem;
+        background: #fff;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-base);
+        min-inline-size: 136px;
+        min-block-size: 136px;
+      }
+
+      .gc__qr img, .gc__qr canvas { display: block; }
+      .gc__qr table { border-collapse: collapse; }
+
+      .gc__qr-hint { margin: 0; font-size: 0.82rem; color: var(--color-text-muted); }
+
+      /* ---------- Code ---------- */
+      .gc__code-box {
+        inline-size: 100%;
+        padding: 0.95rem 1rem;
+        background: var(--color-surface-alt);
+        border: 1.5px dashed var(--color-border-strong);
+        border-radius: var(--radius-base);
+      }
+
+      .gc__code-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--color-text-muted);
+        margin-block-end: 0.3rem;
+      }
+
+      .gc__code {
+        display: block;
+        font-family: var(--font-heading-family);
+        font-size: clamp(1.15rem, 5vw, 1.4rem);
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        font-variant-numeric: tabular-nums;
+        color: var(--color-ink);
+        overflow-wrap: anywhere;
+        user-select: all;
+      }
+
+      .gc__copy-msg {
+        display: block;
+        min-block-size: 1.25em;
+        margin-block-start: 0.3rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-success);
+        opacity: 0;
+        transition: opacity var(--duration-base) ease;
+      }
+
+      .gc__copy-msg.is-visible { opacity: 1; }
+
+      .gc__expiry {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin: 0;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
+      }
+
+      .gc__expiry .icon { color: var(--color-text-muted); }
+
+      /* ---------- Actions ---------- */
+      .gc__actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        inline-size: 100%;
+      }
+
+      .gc__wallet { display: inline-flex; justify-content: center; margin-block-start: 0.15rem; }
+
+      .gc__footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem 0.9rem;
+        font-size: 0.88rem;
+        color: var(--color-text-muted);
+      }
+
+      .gc__footer a { text-decoration: none; font-weight: 600; color: var(--color-ink); }
+      .gc__footer a:hover { color: var(--color-accent); }
+
+      .gc__ltr { direction: ltr; unicode-bidi: isolate; }
+
+      /* ---------- Print: one clean card, no chrome ---------- */
+      @media print {
+        body.template-gift-card {
+          background: #fff;
+          padding: 0;
+          min-block-size: auto;
+          display: block;
+        }
+
+        .gc__card {
+          inline-size: 100%;
+          box-shadow: none;
+          border: 1px solid var(--color-border-strong);
+        }
+
+        .gc__head {
+          background-color: #fff;
+          background-image: none;
+          border-block-end: 1px solid var(--color-border-strong);
+        }
+
+        .gc__title { color: var(--color-ink); }
+        .gc__balance { color: var(--color-ink); }
+
+        .gc__copy, .gc__copy-msg, .gc__actions, .gc__footer { display: none !important; }
+      }
+    </style>
+
+    <script>document.documentElement.classList.replace('no-js', 'js');</script>
+  </head>
+
+  <body class="template-gift-card">
+    <header class="gc__brand">
+      {%- if settings.logo != blank -%}
+        {%- assign gc_logo_width = settings.logo_width | default: 260 -%}
+        {%- assign gc_logo_height = gc_logo_width | divided_by: settings.logo.aspect_ratio | round -%}
+        <img
+          class="gc__logo"
+          src="{{ settings.logo | image_url: width: 380 }}"
+          alt="{{ shop.name | escape }}"
+          width="{{ gc_logo_width }}"
+          height="{{ gc_logo_height }}"
+          loading="eager"
+        >
+      {%- else -%}
+        <span class="gc__shopname">{{ shop.name }}</span>
+      {%- endif -%}
+    </header>
+
+    <main class="panel gc__card">
+      <div class="gc__head">
+        <h1 class="gc__title">{{ 'gift_cards.issued.title' | t }}</h1>
+      </div>
+
+      <div class="gc__body">
+        {%- if is_expired -%}
+          <span class="badge badge--soldout">{{ 'gift_cards.issued.expired' | t }}</span>
+        {%- endif -%}
+
+        <div class="gc__amounts">
+          <p class="gc__balance{% if is_expired %} gc__balance--expired{% endif %}" dir="ltr">
+            {{- formatted_balance -}}
+          </p>
+          {%- if partially_used -%}
+            <p class="gc__initial">
+              {{ 'gift_cards.issued.remaining_html' | t: balance: formatted_balance }} ·
+              <span class="gc__initial-value gc__ltr">{{ formatted_initial }}</span>
+            </p>
+          {%- endif -%}
+        </div>
+
+        <p class="gc__subtext">{{ 'gift_cards.issued.subtext' | t: shop: shop.name }}</p>
+
+        {%- unless is_expired -%}
+          {%- comment -%}
+            The QR is drawn client-side by Shopify's bundled qrcode vendor script.
+            This is a stand-alone template, so it has no schema to hold the hint
+            copy and there is no locale key for it — hence the literal Hebrew.
+          {%- endcomment -%}
+          <div class="gc__qr" id="GiftCardQr" data-identifier="{{ gift_card.qr_identifier }}"></div>
+          <p class="gc__qr-hint" id="GiftCardQrHint" hidden>הציגו את הברקוד בקופה בחנות בקרית ענבים</p>
+        {%- endunless -%}
+
+        <div class="gc__code-box">
+          <span class="gc__code-label" id="GiftCardCodeLabel">{{ 'gift_cards.issued.gift_card_code' | t }}</span>
+          <code class="gc__code gc__ltr" id="GiftCardCode" aria-labelledby="GiftCardCodeLabel">
+            {{- gift_card.code | format_code -}}
+          </code>
+          <button
+            type="button"
+            class="btn btn--outline btn--sm gc__copy"
+            id="GiftCardCopy"
+            data-success="{{ 'gift_cards.issued.copy_code_success' | t | escape }}"
+          >
+            {% render 'icon', name: 'clipboard', size: 16 %}
+            {{ 'gift_cards.issued.copy_code' | t }}
+          </button>
+          <span class="gc__copy-msg" id="GiftCardCopyMessage" role="status" aria-live="polite"></span>
+        </div>
+
+        {%- if gift_card.expires_on -%}
+          {%- assign expires_date = gift_card.expires_on | date: '%d.%m.%Y' -%}
+          <p class="gc__expiry">
+            {% render 'icon', name: 'clock', size: 15 %}
+            <span>{{ 'gift_cards.issued.expiration_date' | t: expires_on: expires_date }}</span>
+          </p>
+        {%- endif -%}
+
+        <div class="gc__actions">
+          {%- unless is_expired -%}
+            <a class="btn btn--full" href="{{ shop.url }}">
+              {{ 'gift_cards.issued.shop_link' | t }}
+              {% render 'icon', name: 'arrow-right', size: 17, class: 'icon--dir' %}
+            </a>
+          {%- endunless -%}
+
+          <button type="button" class="btn btn--ghost btn--full" id="GiftCardPrint">
+            {% render 'icon', name: 'clipboard', size: 17 %}
+            {{ 'gift_cards.issued.print_gift_card' | t }}
+          </button>
+
+          {%- if gift_card.pass_url -%}
+            <a class="gc__wallet" href="{{ gift_card.pass_url }}">
+              <img
+                src="{{ 'gift-card/add-to-apple-wallet.svg' | shopify_asset_url }}"
+                width="120"
+                height="40"
+                alt="{{ 'gift_cards.issued.add_to_apple_wallet' | t }}"
+                loading="lazy"
+              >
+            </a>
+          {%- endif -%}
+        </div>
+      </div>
+    </main>
+
+    <footer class="gc__footer">
+      <a href="{{ shop.url }}">{{ shop.name }}</a>
+      {%- if settings.store_phone != blank -%}
+        <span aria-hidden="true">·</span>
+        <a href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}" class="gc__ltr">{{ settings.store_phone }}</a>
+      {%- endif -%}
+      {%- if settings.store_address != blank -%}
+        <span aria-hidden="true">·</span>
+        <span>{{ settings.store_address }}</span>
+      {%- endif -%}
+    </footer>
+
+    <script src="{{ 'vendor/qrcode.js' | shopify_asset_url }}" defer="defer"></script>
+    <script>
+      (function () {
+        'use strict';
+
+        /* ---- QR code: rendered by Shopify's bundled qrcode vendor script ---- */
+        function renderQr() {
+          var holder = document.getElementById('GiftCardQr');
+          if (!holder) return;
+          var identifier = holder.getAttribute('data-identifier');
+          if (!identifier || typeof window.QRCode === 'undefined') {
+            holder.remove();
+            return;
+          }
+          new window.QRCode(holder, {
+            text: identifier,
+            width: 120,
+            height: 120,
+            colorDark: '#000000',
+            colorLight: '#ffffff'
+          });
+          var hint = document.getElementById('GiftCardQrHint');
+          if (hint) hint.hidden = false;
+        }
+
+        if (document.readyState === 'complete') {
+          renderQr();
+        } else {
+          window.addEventListener('load', renderQr);
+        }
+
+        /* ---- Copy the code ---- */
+        var copyBtn = document.getElementById('GiftCardCopy');
+        var codeEl = document.getElementById('GiftCardCode');
+        var msgEl = document.getElementById('GiftCardCopyMessage');
+
+        function showSuccess() {
+          if (!msgEl || !copyBtn) return;
+          msgEl.textContent = copyBtn.getAttribute('data-success') || '';
+          msgEl.classList.add('is-visible');
+          setTimeout(function () {
+            msgEl.classList.remove('is-visible');
+          }, 2600);
+        }
+
+        function fallbackCopy(text) {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'absolute';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand('copy');
+            showSuccess();
+          } catch (err) {
+            /* clipboard unavailable — the code stays selectable on screen */
+          }
+          document.body.removeChild(ta);
+        }
+
+        if (copyBtn && codeEl) {
+          copyBtn.addEventListener('click', function () {
+            var text = (codeEl.textContent || '').trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(showSuccess).catch(function () {
+                fallbackCopy(text);
+              });
+            } else {
+              fallbackCopy(text);
+            }
+          });
+        }
+
+        /* ---- Print ---- */
+        var printBtn = document.getElementById('GiftCardPrint');
+        if (printBtn) {
+          printBtn.addEventListener('click', function () {
+            window.print();
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

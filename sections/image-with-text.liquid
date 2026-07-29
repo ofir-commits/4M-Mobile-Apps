@@ -1,0 +1,277 @@
+{{ 'section-image-with-text.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign feature_collection = section.settings.collection
+  assign feature_image = section.settings.image
+
+  # How the image fills the frame used to be INFERRED - a collection image was
+  # assumed to be a logo and got contain+padding. That was wrong in both
+  # directions: the עץ collection image is a photograph and was letterboxed
+  # instead of filling its frame, while the makita one really is a wordmark and
+  # got stretched past its own resolution. It is a choice, so make it a setting.
+  # Resolved BEFORE the image fallback below, because 'badge' mode has to know
+  # whether the image it is about to inherit is a photo or a wordmark.
+  assign media_fit = section.settings.media_fit | default: 'cover'
+
+  if feature_image == blank and feature_collection != blank and feature_collection.image != blank
+    assign feature_image = feature_collection.image
+    # A brand collection's own image IS the wordmark - makita's is the 500x200
+    # logo - so it can never stand in for the product photo that badge mode
+    # stamps the mark onto, or the logo would be printed on top of itself.
+    # Degrade to plain logo mode, the honest rendering of the only image here.
+    if media_fit == 'badge'
+      assign media_fit = 'logo'
+    endif
+  endif
+
+  # The mark drawn as a small plate over the photo in badge mode. Defaults to
+  # the collection image for the same reason: for a brand collection, that image
+  # is the logo. With no mark to stamp there is no badge, only a photo.
+  assign badge_image = section.settings.badge_image
+  if badge_image == blank and feature_collection != blank
+    assign badge_image = feature_collection.image
+  endif
+  if media_fit == 'badge'
+    if badge_image == blank
+      assign media_fit = 'cover'
+    else
+      # The badge paints at ~128 CSS px (see the stylesheet), so 512 is 4x and
+      # also the ceiling - never request more than the source really has.
+      assign badge_width = badge_image.width | at_most: 512
+    endif
+  endif
+
+  # image_url only ever DOWNSCALES. Asking for more width than the source has
+  # returns the original behind a URL that claims to be larger, so the browser
+  # lays a 500px file across a box it was told is 600 - which is how the blurry
+  # Makita mark got past review. Request the file's own width, ceilinged at 3x
+  # the 250px render cap in the stylesheet: for the 500x200 logo that resolves
+  # to exactly 500, the honest number, while a future higher-resolution mark
+  # would still get up to 750 for a 3x phone.
+  assign logo_width = feature_image.width | at_most: 750
+
+  assign feature_alt = feature_image.alt
+  if feature_alt == blank
+    assign feature_alt = section.settings.heading
+  endif
+
+  assign feature_link = section.settings.button_link
+  if feature_link == blank and feature_collection != blank
+    assign feature_link = feature_collection.url
+  endif
+
+  # The frame itself becomes the link. The owner reported that clicking the
+  # Makita image did nothing, and it did nothing because feature_link was only
+  # ever consumed by the button below. The fix promotes .image-text__media from
+  # <div> to <a> - the shape brand-logos.liquid already uses for its tiles -
+  # rather than wrapping the frame or laying a stretched overlay over it: no
+  # extra nodes, one box that is both the frame and the hit area, and no way for
+  # anything interactive to end up nested.
+  assign media_link_label = section.settings.button_label | default: section.settings.heading | default: feature_collection.title
+  assign media_alt = feature_alt
+  assign media_is_link = false
+
+  if feature_link != blank and media_link_label != blank
+    # A link whose only content is an image takes its accessible name from that
+    # image, and feature_alt here IS the whole h2 - so the same long sentence
+    # would be announced twice, once as the heading and once as the link. Name
+    # the anchor with the button label and let the image go decorative instead.
+    assign media_is_link = true
+    assign media_alt = ''
+  elsif feature_link != blank and feature_alt != blank
+    # No label of any kind, but the alt can still name the link on its own. The
+    # frame stays a plain <div> when nothing at all can name it: an unnamed
+    # image link is worse for a screen reader than today's dead frame.
+    assign media_is_link = true
+  endif
+-%}
+
+<section
+  id="ImageWithText-{{ section.id }}"
+  class="section{% if section.settings.alt_background %} section--alt{% endif %}"
+>
+  <div class="container">
+    <div class="image-text{% if section.settings.flip %} image-text--flip{% endif %}">
+      <div class="image-text__media-wrap reveal">
+        {%- capture media_inner -%}
+          {%- if feature_image != blank and media_fit == 'logo' -%}
+            {%- comment -%}
+              One honest src and deliberately no srcset. Since image_url cannot
+              upscale, a 750w candidate for a 500px file would hand the browser
+              the original behind a descriptor claiming 750; the browser would
+              then pick it for a 3x screen and upsample it - which is the exact
+              bug being fixed. logo_width never over-declares. The real answer is
+              a vector wordmark; the stylesheet says how to drop one in.
+            {%- endcomment -%}
+            <img
+              src="{{ feature_image | image_url: width: logo_width }}"
+              width="{{ feature_image.width }}"
+              height="{{ feature_image.height }}"
+              alt="{{ media_alt | escape }}"
+              loading="lazy"
+              decoding="async"
+            >
+          {%- elsif feature_image != blank -%}
+            <img
+              src="{{ feature_image | image_url: width: 900 }}"
+              srcset="{{ feature_image | image_url: width: 450 }} 450w,
+                      {{ feature_image | image_url: width: 750 }} 750w,
+                      {{ feature_image | image_url: width: 900 }} 900w,
+                      {{ feature_image | image_url: width: 1200 }} 1200w"
+              sizes="(min-width: 750px) 50vw, 100vw"
+              width="{{ feature_image.width }}"
+              height="{{ feature_image.height }}"
+              alt="{{ media_alt | escape }}"
+              loading="lazy"
+              decoding="async"
+            >
+            {%- if media_fit == 'badge' -%}
+              {%- comment -%}
+                The mark is wrapped in a <span> on purpose: base.css pins every
+                direct img/svg child of .media to inset-0 + object-fit: cover, so
+                a second bare <img> here would be stretched across the photo
+                instead of resting on it. The span is not matched by that
+                selector, and the img inside it is no longer a .media child.
+                alt is empty in every configuration - the brand name is already
+                in the eyebrow and the heading, and when the frame is a link the
+                anchor carries its own name, so a second one here is just noise.
+              {%- endcomment -%}
+              <span class="image-text__badge">
+                <img
+                  src="{{ badge_image | image_url: width: badge_width }}"
+                  width="{{ badge_image.width }}"
+                  height="{{ badge_image.height }}"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                >
+              </span>
+            {%- endif -%}
+          {%- else -%}
+            {{ 'lifestyle-2' | placeholder_svg_tag: 'placeholder-svg' }}
+          {%- endif -%}
+        {%- endcapture -%}
+
+        {%- capture media_classes -%}
+          image-text__media media{% if media_fit == 'logo' %} image-text__media--logo{% endif %}{% if media_fit == 'badge' %} image-text__media--badge{% endif %}
+        {%- endcapture -%}
+        {%- assign media_classes = media_classes | strip -%}
+
+        {%- if media_is_link -%}
+          <a
+            class="{{ media_classes }} image-text__media--link"
+            href="{{ feature_link }}"
+            {% if media_link_label != blank %}aria-label="{{ media_link_label | escape }}"{% endif %}
+          >{{ media_inner }}</a>
+        {%- else -%}
+          <div class="{{ media_classes }}">{{ media_inner }}</div>
+        {%- endif -%}
+      </div>
+
+      <div class="image-text__content">
+        {%- if section.settings.eyebrow != blank -%}
+          <span class="text-eyebrow reveal">{{ section.settings.eyebrow | escape }}</span>
+        {%- endif -%}
+
+        {%- if section.settings.heading != blank -%}
+          <h2 class="image-text__heading reveal">{{ section.settings.heading | escape }}</h2>
+        {%- endif -%}
+
+        {%- if section.settings.text != blank -%}
+          <div class="image-text__text rte reveal">{{ section.settings.text }}</div>
+        {%- endif -%}
+
+        {%- if section.settings.button_label != blank and feature_link != blank -%}
+          <div class="image-text__actions reveal">
+            <a class="btn" href="{{ feature_link }}">{{ section.settings.button_label | escape }}</a>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "תמונה עם טקסט",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "תמונה",
+      "info": "מומלץ יחס 4:3, רוחב 1200px לפחות."
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "קטגוריה (גיבוי לתמונה)",
+      "info": "אם לא נבחרה תמונה - תוצג תמונת הקטגוריה, והכפתור יקשר אליה."
+    },
+    {
+      "type": "select",
+      "id": "media_fit",
+      "label": "אופן הצגת התמונה",
+      "info": "\"תמונה\" ממלאת את כל המסגרת. \"לוגו\" מציגה את הסמל במלואו על רקע לבן, בגודל שלא חורג מהרזולוציה שלו כדי שיישאר חד. \"צילום מוצר עם סמל המותג\" מציגה צילום מוצר גדול וחד ואת הסמל כתג קטן עליו - זו התצוגה שבה הסמל חד ביותר, והיא דורשת בחירת תמונת מוצר למעלה.",
+      "options": [
+        { "value": "cover", "label": "תמונה (ממלאת את המסגרת)" },
+        { "value": "logo", "label": "לוגו מותג (על רקע לבן)" },
+        { "value": "badge", "label": "צילום מוצר עם סמל המותג" }
+      ],
+      "default": "cover"
+    },
+    {
+      "type": "image_picker",
+      "id": "badge_image",
+      "label": "סמל המותג (לתצוגת צילום מוצר עם סמל)",
+      "info": "אם ריק - נלקחת תמונת הקטגוריה, שאצל מותג היא הלוגו עצמו. התג נשאר קטן בכוונה: כך גם קובץ ברוחב 500px נראה חד גם במסכי פי-3."
+    },
+    {
+      "type": "checkbox",
+      "id": "flip",
+      "label": "החלפת צדדים (תמונה בצד השני)",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "שורת פתיחה קטנה",
+      "default": "מחסן העצים"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "עץ, לוחות וקורות - בחיתוך לפי מידה"
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "טקסט",
+      "default": "<p>במחסן העצים שלנו תמצאו עץ גושני, לוחות, קורות ופרופילים - עם חיתוך מדויק לפי המידות שאתם צריכים. הצוות מלווה אתכם משלב התכנון ועד ההעמסה על הרכב, בדיוק כמו שאנחנו עושים כאן כבר יותר מ-30 שנה.</p>"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "טקסט כפתור",
+      "default": "לצפייה בקטלוג"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "קישור כפתור",
+      "default": "/collections/all"
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    }
+  ],
+  "presets": [
+    {
+      "name": "תמונה עם טקסט"
+    }
+  ]
+}
+{% endschema %}

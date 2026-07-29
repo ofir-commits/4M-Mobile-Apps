@@ -1,0 +1,443 @@
+/* =========================================================
+   Shilo Pro — Cart page (main-cart)
+   v2 "Clarity": one white lines card on the cool page canvas, plus a sticky
+   white summary panel. Red belongs to the checkout button and to sale prices.
+   Consumes .card / .panel / .price / .qty / .shipping-bar / .btn / .badge /
+   .chip / .empty-state from base.css — this file only positions them.
+   ========================================================= */
+
+.main-cart__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1.5rem;
+  flex-wrap: wrap;
+  margin-block-end: clamp(1.35rem, 2.5vw, 2.15rem);
+}
+
+.main-cart__title { margin: 0; }
+
+.main-cart__count {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Layout: stacked on mobile, lines + sticky summary from 990px ---------- */
+.main-cart__layout {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+  align-items: start;
+}
+
+@media (min-width: 990px) {
+  .main-cart__layout {
+    grid-template-columns: minmax(0, 1fr) 372px;
+    gap: clamp(1.75rem, 3vw, 3rem);
+  }
+
+  .cart-summary {
+    position: sticky;
+    inset-block-start: calc(var(--sticky-header-height, 92px) + 1rem);
+  }
+}
+
+/* ---------- Lines card ---------- */
+.main-cart__lines {
+  padding-inline: clamp(0.9rem, 1.8vw, 1.5rem);
+  min-inline-size: 0;
+}
+
+/* The column head only appears once the row genuinely fits five columns. */
+.cart-lines__head { display: none; }
+
+/* ---------- Line item ---------- */
+/* Below 1200px: thumbnail + text, then a full-width control row, so the
+   full-size 44px stepper never has to share a narrow column. */
+.cart-line {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 44px;
+  grid-template-areas:
+    "media    info     remove"
+    "media    price    price"
+    "controls controls controls";
+  column-gap: 0.9rem;
+  row-gap: 0.4rem;
+  padding-block: 1.15rem;
+  border-block-end: 1px solid var(--color-border);
+  transition: opacity var(--duration-base) ease, transform var(--duration-base) ease;
+}
+
+.cart-lines > .cart-line:last-child { border-block-end: none; }
+
+.cart-line.is-removing {
+  opacity: 0.35;
+  transform: scale(0.985);
+  pointer-events: none;
+}
+
+.cart-line__media {
+  grid-area: media;
+  inline-size: 88px;
+  align-self: start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+}
+
+.cart-line__media img { padding: 5px; }
+
+.cart-line__info {
+  grid-area: info;
+  display: flex;
+  flex-direction: column;
+  gap: 0.26rem;
+  min-inline-size: 0;
+}
+
+.cart-line__vendor {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.cart-line__title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-ink);
+  text-decoration: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  transition: color var(--duration-fast) ease;
+}
+
+.cart-line__title:hover { color: var(--color-accent); }
+
+.cart-line__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.8rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.cart-line__option { display: flex; gap: 0.25rem; }
+.cart-line__option dt { font-weight: 600; }
+.cart-line__option dd { margin: 0; }
+
+.cart-line__sku,
+.cart-line__property {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.cart-line__stock { margin-block-start: 0.1rem; }
+
+.cart-line__discounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-block-start: 0.15rem;
+}
+
+.cart-line__discount {
+  font-size: 0.74rem;
+  background: var(--color-surface-alt);
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  color: var(--color-success);
+}
+
+/* ---------- Cells ---------- */
+.cart-line__price {
+  grid-area: price;
+  font-size: 0.9rem;
+}
+
+.cart-line__each {
+  font-family: var(--font-body-family);
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.cart-line__controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block-start: 0.25rem;
+}
+
+.cart-line__qty {
+  display: flex;
+  align-items: center;
+}
+
+.cart-line__total {
+  flex-shrink: 0;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.cart-line__remove {
+  grid-area: remove;
+  display: flex;
+  justify-content: flex-end;
+  align-self: start;
+}
+
+.cart-line__remove-btn {
+  inline-size: 44px;
+  block-size: 44px;
+  color: var(--color-text-muted);
+}
+
+.cart-line__remove-btn:hover {
+  color: var(--color-danger);
+  background: var(--color-surface-alt);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+}
+
+/* ---------- Desktop table ---------- */
+/* From 1200px the row really is a table: product (title over unit price),
+   quantity, line total, remove — with the column head above it. */
+@media (min-width: 1200px) {
+  .main-cart__lines { --cart-line-cols: 88px minmax(0, 1fr) 148px 116px 44px; }
+
+  .cart-lines__head {
+    display: grid;
+    grid-template-columns: var(--cart-line-cols);
+    align-items: end;
+    column-gap: 1rem;
+    padding-block: 1.15rem 0.7rem;
+    border-block-end: 1px solid var(--color-border-strong);
+    font-family: var(--font-heading-family);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+
+  .cart-lines__head-product { grid-column: span 2; }
+
+  .cart-line {
+    grid-template-columns: var(--cart-line-cols);
+    grid-template-areas:
+      "media info  qty total remove"
+      "media price qty total remove";
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0.3rem;
+    padding-block: 1.35rem;
+  }
+
+  /* The control row dissolves so quantity and total take their own columns. */
+  .cart-line__controls { display: contents; }
+
+  .cart-line__media { align-self: center; }
+  .cart-line__info { align-self: end; }
+  .cart-line__price { align-self: start; }
+  .cart-line__qty { grid-area: qty; align-self: center; }
+
+  .cart-line__total {
+    grid-area: total;
+    align-self: center;
+    justify-self: start;
+  }
+
+  .cart-line__remove { align-self: center; }
+}
+
+/* ---------- Lines card footer ---------- */
+.main-cart__lines-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  padding-block: 0.85rem 1rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.main-cart__keep-shopping {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-block-size: 44px;
+  font-family: var(--font-heading-family);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease, gap var(--duration-fast) ease;
+}
+
+.main-cart__keep-shopping:hover {
+  color: var(--color-accent);
+  gap: 0.65rem;
+}
+
+/* ---------- Summary panel ---------- */
+.cart-summary { min-inline-size: 0; }
+
+.cart-summary__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cart-summary__title { margin: 0; }
+
+.cart-summary__shipping {
+  padding: 0.85rem 1rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+}
+
+.cart-summary__shipping .shipping-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cart-summary__shipping .shipping-bar__label .icon { flex-shrink: 0; }
+
+.cart-summary__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.cart-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.cart-summary__row-value {
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cart-summary__row--discount,
+.cart-summary__row--savings {
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+.cart-summary__discount-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.cart-summary__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block-start: 0.9rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.cart-summary__total-label {
+  font-family: var(--font-heading-family);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+
+.cart-summary__total-price { font-size: 1.25rem; }
+
+.cart-summary__fineprint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: -0.55rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.cart-summary__fineprint .icon { flex-shrink: 0; }
+
+.cart-summary__note .field__textarea {
+  min-block-size: 84px;
+  font-size: 0.94rem;
+}
+
+.cart-summary__trust {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding-block-start: 0.95rem;
+  border-block-start: 1px solid var(--color-border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.cart-summary__trust li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cart-summary__trust .icon {
+  flex-shrink: 0;
+  color: var(--color-success);
+}
+
+.cart-summary__payments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.cart-summary__payment-icon {
+  block-size: 26px;
+  inline-size: auto;
+}
+
+/* ---------- Empty state ---------- */
+.main-cart__empty { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(2rem, 4vw, 3rem); }
+
+.main-cart__popular {
+  inline-size: 100%;
+  max-inline-size: 640px;
+  margin-block-start: 1.5rem;
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.main-cart__popular-title {
+  margin: 0 0 0.7rem;
+  font-family: var(--font-heading-family);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.main-cart__popular-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.main-cart__popular-chips .chip {
+  min-block-size: 44px;
+  font-size: 0.88rem;
+}

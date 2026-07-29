@@ -1,0 +1,654 @@
+/* =========================================================
+   Shilo Pro — Customer area (auth, account, order, addresses)
+   v2 "Clarity". Section-specific layout only: cards, panels,
+   fields, badges and tables all come from base.css.
+   Contract: theme/DESIGN-SYSTEM.md — tokens only, no hardcoded values.
+   ========================================================= */
+
+/* =========================================================
+   1. Auth screens — login / register / reset / activate
+   One centred panel on the page canvas, logo above.
+   ========================================================= */
+.auth-section {
+  background-color: var(--color-page);
+  padding-block: clamp(2rem, 5vw, 4.25rem);
+}
+
+.auth-shell {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.1rem, 2.5vw, 1.6rem);
+  max-inline-size: 480px;
+  margin-inline: auto;
+}
+
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-block-size: 44px;
+  padding-inline: 0.5rem;
+  text-decoration: none;
+}
+
+.auth-brand__img {
+  inline-size: auto;
+  block-size: auto;
+  max-inline-size: min(190px, 58vw);
+}
+
+.auth-brand__text {
+  font-family: var(--font-heading-family);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+/* Extends .panel */
+.auth-card { padding: clamp(1.5rem, 4vw, 2.35rem); }
+
+.auth-card__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  margin-block-end: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.auth-card__icon {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 52px;
+  margin-block-end: 0.35rem;
+  border-radius: var(--radius-base);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.auth-card__title { margin: 0; }
+
+.auth-card__subtext {
+  margin: 0;
+  max-inline-size: 36ch;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.auth-card .form__success { margin-block-end: 1.25rem; }
+
+/* Vertical rhythm inside every Shopify customer form */
+.customer-form > * + * { margin-block-start: 1rem; }
+.customer-form > .auth-meta { margin-block-start: 0.55rem; }
+.customer-form > .auth-submit { margin-block-start: 1.4rem; }
+.customer-form > .auth-submit + .btn { margin-block-start: 0.7rem; }
+
+.auth-meta {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.9rem;
+}
+.auth-meta--center { justify-content: center; }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-block: 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  block-size: 1px;
+  background: var(--color-border);
+}
+
+.auth-alt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.auth-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  text-align: center;
+  padding: 1rem 1.15rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+}
+
+.auth-guest__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.auth-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-block-start: 1.4rem;
+  padding-block-start: 1.25rem;
+  border-block-start: 1px solid var(--color-border);
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* Support line under the card — a phone number beats a lost password */
+.auth-support {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem 0.85rem;
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+}
+
+.auth-support__text { margin: 0; }
+
+.auth-support__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-block-size: 44px;
+  padding-inline: 0.5rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease;
+}
+.auth-support__link:hover { color: var(--color-accent); }
+.auth-support__link .icon { color: var(--color-accent); }
+.auth-support__ltr { direction: ltr; unicode-bidi: isolate; }
+
+/* Login <-> recover panel switching */
+.auth-shell[data-active-panel="login"] .auth-panel--recover { display: none; }
+.auth-shell[data-active-panel="recover"] .auth-panel--login { display: none; }
+
+/* No-JS fallback via :target (JS prevents the hash change, so no conflict) */
+.auth-shell[data-active-panel="login"]:has(#recover:target) .auth-panel--recover { display: block; }
+.auth-shell[data-active-panel="login"]:has(#recover:target) .auth-panel--login { display: none; }
+.auth-shell[data-active-panel="recover"]:has(#login:target) .auth-panel--login { display: block; }
+.auth-shell[data-active-panel="recover"]:has(#login:target) .auth-panel--recover { display: none; }
+
+/* =========================================================
+   2. Shared account chrome
+   ========================================================= */
+.account-section { padding-block: clamp(1.5rem, 3.5vw, 2.75rem); }
+
+.account-crumbs { margin-block-end: clamp(0.9rem, 2vw, 1.35rem); }
+
+.account-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.85rem 1.5rem;
+  flex-wrap: wrap;
+  margin-block-end: clamp(1.25rem, 3vw, 2rem);
+}
+
+.account-header__text { min-inline-size: 0; }
+.account-header__title { margin: 0; }
+
+.account-header__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  margin-block-start: 0.75rem;
+}
+
+.account-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* =========================================================
+   3. Account dashboard
+   ========================================================= */
+.account-layout {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.6rem);
+  align-items: start;
+}
+
+@media (min-width: 990px) {
+  .account-layout { grid-template-columns: minmax(0, 1fr) 330px; }
+}
+
+.account-side {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.35rem);
+}
+
+.account-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+  font-size: 1.02rem;
+}
+.account-panel__title .icon { color: var(--color-accent); }
+
+.account-dl { margin: 0; }
+
+.account-dl__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-block: 0.7rem;
+  border-block-end: 1px solid var(--color-border);
+}
+.account-dl__row:first-child { padding-block-start: 0; }
+.account-dl__row:last-child { padding-block-end: 0; border-block-end: none; }
+
+.account-dl__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.account-dl__value {
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.account-dl__value--ltr { direction: ltr; unicode-bidi: isolate; text-align: start; }
+
+.account-address {
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+.account-panel__cta { margin-block-start: 1.15rem; }
+
+.account-help__text {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.93rem;
+}
+
+.account-help__actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.account-help__ltr { direction: ltr; unicode-bidi: isolate; }
+
+/* ---------- Orders card ---------- */
+.orders-card { overflow: hidden; }
+
+.orders-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.95rem clamp(1rem, 2vw, 1.25rem);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.orders-card__title { margin: 0; font-size: 1.05rem; }
+.orders-card__title .icon { color: var(--color-accent); }
+
+.orders-card .table th:first-child,
+.orders-card .table td:first-child { padding-inline-start: clamp(1rem, 2vw, 1.25rem); }
+.orders-card .table th:last-child,
+.orders-card .table td:last-child { padding-inline-end: clamp(1rem, 2vw, 1.25rem); }
+.orders-card .table tbody tr:last-child td { border-block-end: none; }
+
+.orders-card__empty { padding-inline: clamp(1rem, 2vw, 1.25rem); }
+
+.orders-table__link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 32px;
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.orders-table__link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.orders-table__date { color: var(--color-text-muted); white-space: nowrap; }
+
+.orders-table__total {
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* ---------- Status badge (composes .badge from base.css) ---------- */
+.order-status {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+.order-status::before {
+  content: "";
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.order-status--ok { color: var(--color-success); }
+.order-status--wait { color: var(--color-warning); }
+.order-status--off { color: var(--color-danger); }
+.order-status--lg { font-size: 0.86rem; padding: 0.36rem 0.8rem; }
+
+/* ---------- Tables that become stacked rows on phones ---------- */
+@media (max-width: 749px) {
+  .table--stack,
+  .table--stack tbody { display: block; }
+  .table--stack thead { display: none; }
+
+  .table--stack tr {
+    display: block;
+    padding-block: 0.4rem 0.7rem;
+    padding-inline: clamp(1rem, 2vw, 1.25rem);
+    border-block-end: 1px solid var(--color-border);
+  }
+  .table--stack tbody tr:last-child { border-block-end: none; }
+
+  .table--stack td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0;
+    border-block-end: none;
+    text-align: end;
+  }
+
+  .table--stack td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-align: start;
+  }
+
+  .table--stack td.cell-product {
+    flex-direction: column;
+    align-items: stretch;
+    padding-block: 0.7rem;
+    text-align: start;
+  }
+  .table--stack td.cell-product::before { display: none; }
+
+  /* The wrapping .card already supplies the inline padding on mobile */
+  .orders-card .table--stack td:first-child,
+  .orders-card .table--stack td:last-child { padding-inline: 0; }
+}
+
+/* =========================================================
+   4. Order detail
+   ========================================================= */
+.order-header { margin-block-end: clamp(1.15rem, 2.5vw, 1.75rem); }
+
+.order-header__title { margin: 0; }
+
+.order-header__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-block-start: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.93rem;
+}
+
+.order-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.95rem 1.15rem;
+  margin-block-end: clamp(1.15rem, 2.5vw, 1.6rem);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-inline-start: 3px solid var(--color-danger);
+  border-radius: var(--radius-base);
+}
+.order-alert .icon { flex-shrink: 0; margin-block-start: 0.15rem; color: var(--color-danger); }
+.order-alert p { margin: 0; }
+.order-alert__title { font-weight: 700; color: var(--color-danger); }
+.order-alert__reason { color: var(--color-text-muted); font-size: 0.92rem; }
+
+.order-layout {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.6rem);
+  align-items: start;
+}
+
+@media (min-width: 990px) {
+  .order-layout { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+
+.order-side {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.35rem);
+}
+
+/* ---------- Line items ---------- */
+.order-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.order-line__media {
+  inline-size: 64px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 0.2rem;
+}
+
+.order-line__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-inline-size: 0;
+}
+
+.order-line__title {
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+a.order-line__title:hover { color: var(--color-accent); }
+
+.order-line__discount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.order-line__tracking {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-block-start: 0.45rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+.order-line__tracking-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.order-line__tracking-row .icon { color: var(--color-accent); flex-shrink: 0; }
+
+.order-line__sku,
+.order-line__price { white-space: nowrap; }
+.order-line__sku { color: var(--color-text-muted); font-size: 0.88rem; }
+
+/* ---------- Totals ---------- */
+.order-totals__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.5rem;
+  font-size: 0.95rem;
+  border-block-end: 1px solid var(--color-border);
+}
+.order-totals__row:first-of-type { padding-block-start: 0; }
+
+.order-totals__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+}
+
+.order-totals__value {
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--color-ink);
+}
+
+.order-totals__row--discount .order-totals__label,
+.order-totals__row--discount .order-totals__value { color: var(--color-success); }
+
+.order-totals__row--grand {
+  border-block-end: none;
+  border-block-start: 2px solid var(--color-ink);
+  margin-block-start: 0.35rem;
+  padding-block: 0.85rem 0;
+  font-size: 1.05rem;
+}
+.order-totals__row--grand .order-totals__label {
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  color: var(--color-ink);
+}
+.order-totals__row--grand .order-totals__value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-accent);
+}
+
+/* =========================================================
+   5. Addresses
+   ========================================================= */
+.addresses-form {
+  max-inline-size: 760px;
+  margin-block-end: clamp(1.25rem, 3vw, 2rem);
+}
+
+.addresses-form__title { margin: 0 0 1.15rem; }
+
+.address-form__actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-block-start: 1.5rem;
+}
+
+.addresses-grid {
+  display: grid;
+  gap: clamp(0.9rem, 2vw, 1.35rem);
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 750px) {
+  .addresses-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1200px) {
+  .addresses-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.address-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: clamp(1.1rem, 2vw, 1.4rem);
+}
+
+.address-card--default { border-color: var(--color-accent); }
+
+.address-card__body {
+  font-style: normal;
+  line-height: 1.75;
+  color: var(--color-text);
+}
+
+.address-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  inline-size: 100%;
+  margin-block-start: auto;
+  padding-block-start: 0.85rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.address-card__delete { --btn-color: var(--color-danger); }
+.address-card__delete:hover {
+  --btn-bg: var(--color-surface-alt);
+  --btn-color: var(--color-danger);
+  --btn-border: var(--color-danger);
+}
+
+.address-card__edit {
+  inline-size: 100%;
+  margin-block-start: 0.35rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--color-border);
+}
+.address-card__edit-title { margin: 0 0 1rem; }
+
+.addresses-empty { grid-column: 1 / -1; }
+
+/* =========================================================
+   6. Print — an order printed as a delivery note
+   ========================================================= */
+@media print {
+  .account-crumbs,
+  .account-header__actions { display: none !important; }
+
+  .order-layout,
+  .account-layout { display: block; }
+
+  .order-side > * + * { margin-block-start: 1rem; }
+  .order-side { margin-block-start: 1rem; }
+
+  .order-line__tracking { background: none; padding: 0; }
+}

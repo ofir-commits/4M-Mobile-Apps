@@ -1,0 +1,107 @@
+/* =========================================================
+   Shilo Pro — Collection list (v2 "Clarity")
+   Consumes the .collection-tile component from base.css:
+   white card, contained media well, hairline body with
+   title + product count + accent arrow.
+   Section-specific layout only — grid columns and the
+   feature tile that spans two of them.
+   ========================================================= */
+
+/* Hard rule: every tap target >= 44px. */
+.collection-list .section-header__link {
+  min-block-size: 44px;
+}
+
+/* ---------- Grid: 2-up on mobile (from .grid), N-up on desktop ---------- */
+@media (min-width: 750px) {
+  .collection-list__grid {
+    grid-template-columns: repeat(var(--cl-columns, 3), minmax(0, 1fr));
+  }
+}
+
+.collection-list__item {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.collection-list__item .collection-tile {
+  inline-size: 100%;
+}
+
+/* Rows containing the taller feature tile stretch every sibling; letting the
+   media well absorb the difference keeps all tile bodies on one baseline. */
+.collection-list__item .collection-tile__media {
+  flex: 1 1 auto;
+}
+
+/* Uniform tile faces.
+   The department images do not share a background: most are the store's designed
+   1080x1080 tiles, but כלים נטענים (900x900), ברזים (800x800) and סולמות
+   (333x500) are raw product shots on white — so those three read as white holes
+   next to the designed ones, and the portrait one was being cropped in half by a
+   4:3 cover.
+   Square + contain + a white well makes every tile read the same. A 1:1 image
+   contained in a 1:1 box is a perfect fit, so the designed tiles still fill edge
+   to edge and lose nothing; anything off-ratio letterboxes into white that blends
+   with the well instead of being cropped. Overriding base.css's absolute-fill
+   img needs `position: static` so the grid can centre it.
+   Swapping the three product shots for designed tiles is the real fix — logged in
+   docs/STORE-HEALTH.md. */
+.collection-list__item .collection-tile__media {
+  aspect-ratio: 1 / 1;
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+}
+
+.collection-list__item .collection-tile__media > img {
+  position: static;
+  object-fit: contain;
+}
+
+.collection-list__tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-inline-size: 0;
+}
+
+/* ---------- Feature tile ---------- */
+.collection-list__item--feature {
+  grid-column: 1 / -1;
+}
+
+.collection-list__item--feature .collection-tile__media {
+  aspect-ratio: 16 / 9;
+}
+
+/* The feature tile is deliberately the odd one out, and it is wide: a square
+   department image contained in a 16/9 box would sit between two white bars.
+   Crop it instead - on a tile this large losing the top and bottom of the frame
+   reads as a hero, not as a mistake. `feature_first` is off on the homepage so
+   all nine tiles match, but the setting stays usable. */
+.collection-list__item--feature .collection-tile__media > img {
+  object-fit: cover;
+}
+
+.collection-list__item--feature .collection-tile__title {
+  font-size: calc(1.22rem * var(--font-heading-scale));
+}
+
+.collection-list__item--feature .collection-tile__count {
+  font-size: 0.88rem;
+}
+
+@media (min-width: 750px) {
+  .collection-list__item--feature {
+    grid-column: span 2;
+  }
+
+  .collection-list__item--feature .collection-tile__body {
+    padding: 1.05rem 1.35rem;
+  }
+
+  .collection-list__item--feature .collection-tile__title {
+    font-size: calc(1.5rem * var(--font-heading-scale));
+  }
+}

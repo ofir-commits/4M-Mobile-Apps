@@ -1,0 +1,33 @@
+{%- comment -%}
+  Merchant-controlled product labels — the in-theme replacement for the paid
+  "Product Labels & Badges" app.
+
+  A label is a product tag that starts with "תווית:" — everything after the
+  colon is rendered as an amber offer badge, e.g. the tag
+  "תווית:משלוח חינם" renders a "משלוח חינם" badge. Labels are managed where
+  merchandising already happens (the product's tags in the admin), work in
+  bulk via the admin's bulk editor, and need no external service.
+
+  The automatic badges (מבצע % / חדש / אזל מהמלאי) are separate and unchanged.
+
+  Accepts:
+    product {Object}  product (required)
+    limit   {Number}  max labels to render (default 2 — cards get crowded fast)
+    class   {String}  extra class per badge
+{%- endcomment -%}
+{%- liquid
+  assign labels_limit = limit | default: 2
+  assign labels_shown = 0
+-%}
+{%- if settings.enable_tag_labels -%}
+  {%- for tag in product.tags -%}
+    {%- assign tag_prefix = tag | slice: 0, 6 -%}
+    {%- if tag_prefix == 'תווית:' and labels_shown < labels_limit -%}
+      {%- assign label_text = tag | remove_first: 'תווית:' | strip -%}
+      {%- if label_text != blank -%}
+        <span class="badge badge--offer {{ class }}">{{ label_text | escape }}</span>
+        {%- assign labels_shown = labels_shown | plus: 1 -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}

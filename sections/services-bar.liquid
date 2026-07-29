@@ -1,0 +1,147 @@
+{{ 'section-services-bar.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign items_count = section.blocks.size
+  if items_count == 0
+    assign items_count = 4
+  endif
+  assign columns = items_count | at_most: 4
+-%}
+
+<section
+  id="ServicesBar-{{ section.id }}"
+  class="section section--tight services-bar{% if section.settings.alt_background %} section--alt{% endif %}"
+>
+  <div class="container">
+    <div class="grid services-bar__grid" style="--services-count: {{ columns }};">
+      {%- if section.blocks.size > 0 -%}
+        {%- for block in section.blocks -%}
+          <div class="card card--pad services-bar__item reveal" {{ block.shopify_attributes }}>
+            <span class="services-bar__icon" aria-hidden="true">
+              {%- render 'icon', name: block.settings.icon, size: 24 -%}
+            </span>
+            <div class="services-bar__text">
+              {%- if block.settings.title != blank -%}
+                <strong class="services-bar__title">{{ block.settings.title | escape }}</strong>
+              {%- endif -%}
+              {%- if block.settings.text != blank -%}
+                <span class="services-bar__sub">{{ block.settings.text | escape }}</span>
+              {%- endif -%}
+            </div>
+          </div>
+        {%- endfor -%}
+      {%- else -%}
+        {%- assign fallback_items = 'truck|משלוחים לכל הארץ|אספקה עד האתר, העסק או הבית;;store|איסוף עצמי מהחנות|ההזמנה מחכה לכם בקרית ענבים;;headset|ייעוץ מקצועי|צוות עם 30+ שנות ניסיון בענף;;shield-check|מותגים מקוריים בלבד|אחריות מלאה מיבואן רשמי' | split: ';;' -%}
+        {%- for item in fallback_items -%}
+          {%- assign parts = item | split: '|' -%}
+          <div class="card card--pad services-bar__item reveal">
+            <span class="services-bar__icon" aria-hidden="true">
+              {%- render 'icon', name: parts[0], size: 24 -%}
+            </span>
+            <div class="services-bar__text">
+              <strong class="services-bar__title">{{ parts[1] }}</strong>
+              <span class="services-bar__sub">{{ parts[2] }}</span>
+            </div>
+          </div>
+        {%- endfor -%}
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "רצועת שירותים",
+  "max_blocks": 4,
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    }
+  ],
+  "blocks": [
+    {
+      "type": "service",
+      "name": "שירות",
+      "settings": [
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "אייקון",
+          "options": [
+            { "value": "truck", "label": "משאית (משלוחים)" },
+            { "value": "store", "label": "חנות (איסוף עצמי)" },
+            { "value": "headset", "label": "מוקד שירות (ייעוץ)" },
+            { "value": "shield-check", "label": "מגן (אמינות)" },
+            { "value": "wrench", "label": "מפתח ברגים" },
+            { "value": "hammer", "label": "פטיש" },
+            { "value": "paint-roller", "label": "רולר צבע" },
+            { "value": "package", "label": "חבילה" },
+            { "value": "credit-card", "label": "כרטיס אשראי" },
+            { "value": "clock", "label": "שעון" },
+            { "value": "check-circle", "label": "וי מאושר" },
+            { "value": "percent", "label": "אחוזים (מבצעים)" },
+            { "value": "tag", "label": "תגית מחיר" },
+            { "value": "map-pin", "label": "מיקום" },
+            { "value": "refresh", "label": "החזרות והחלפות" }
+          ],
+          "default": "truck"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "כותרת",
+          "default": "משלוחים לכל הארץ"
+        },
+        {
+          "type": "text",
+          "id": "text",
+          "label": "טקסט משנה",
+          "default": "אספקה עד האתר, העסק או הבית"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "רצועת שירותים",
+      "blocks": [
+        {
+          "type": "service",
+          "settings": {
+            "icon": "truck",
+            "title": "משלוחים לכל הארץ",
+            "text": "אספקה עד האתר, העסק או הבית"
+          }
+        },
+        {
+          "type": "service",
+          "settings": {
+            "icon": "store",
+            "title": "איסוף עצמי מהחנות",
+            "text": "ההזמנה מחכה לכם בקרית ענבים"
+          }
+        },
+        {
+          "type": "service",
+          "settings": {
+            "icon": "headset",
+            "title": "ייעוץ מקצועי",
+            "text": "צוות עם 30+ שנות ניסיון בענף"
+          }
+        },
+        {
+          "type": "service",
+          "settings": {
+            "icon": "shield-check",
+            "title": "מותגים מקוריים בלבד",
+            "text": "אחריות מלאה מיבואן רשמי"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

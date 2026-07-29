@@ -1,0 +1,142 @@
+{%- comment -%}
+  Renders the buy block: quantity + add-to-cart + dynamic checkout, plus the
+  sticky add-to-cart bar that follows the shopper once the main button leaves
+  the viewport.
+
+  Usage:
+    {% render 'buy-buttons',
+       product: product,
+       section_id: section.id,
+       sticky: section.settings.enable_sticky_atc %}
+
+  Params:
+    product    {Object}  product (required)
+    section_id {String}  section id (required)
+    sticky     {Boolean} render the sticky bar (default true)
+
+  Notes:
+    - <product-form> (global.js) AJAX-ifies the form, toggles .btn--loading on
+      the submit button and opens the cart drawer.
+    - The form id is "ProductForm-<section_id>", so the sticky bar's button can
+      submit it from outside the form via [form].
+    - [data-buy-buttons-anchor] is observed by section-main-product.js to show
+      and hide the sticky bar.
+{%- endcomment -%}
+{%- liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign product_form_id = 'ProductForm-' | append: section_id
+  assign qty_id = 'Quantity-' | append: section_id
+
+  assign show_sticky = true
+  if sticky == false
+    assign show_sticky = false
+  endif
+
+  assign qty_in_cart = 0
+  for line_item in cart.items
+    if line_item.variant_id == current_variant.id
+      assign qty_in_cart = line_item.quantity
+      break
+    endif
+  endfor
+
+  assign sticky_media = current_variant.featured_media | default: product.featured_media
+-%}
+
+<product-form class="product-buy" data-buy-buttons-anchor>
+  {%- form 'product', product, id: product_form_id, class: 'product-form', novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+    <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id>
+
+    <div class="product-form__row">
+      <div class="product-form__qty">
+        <label class="field__label" for="{{ qty_id }}">{{ 'products.product.quantity_label' | t }}</label>
+        {% render 'quantity-input', id: qty_id, name: 'quantity', value: 1, min: 1, product_title: product.title %}
+      </div>
+
+      <div class="product-form__submit-wrap">
+        <button
+          type="submit"
+          name="add"
+          class="btn btn--lg btn--full product-form__submit"
+          data-add-button
+          {% if current_variant.available == false %}disabled aria-disabled="true"{% endif %}
+        >
+          {% render 'icon', name: 'cart-add', size: 20 %}
+          <span data-add-button-text>
+            {%- if current_variant.available -%}
+              {{ 'products.product.add_to_cart' | t }}
+            {%- else -%}
+              {{ 'products.product.sold_out' | t }}
+            {%- endif -%}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <p class="product-form__in-cart" data-in-cart {% if qty_in_cart == 0 %}hidden{% endif %} role="status">
+      {% render 'icon', name: 'check-circle', size: 15 %}
+      <span data-in-cart-text>
+        {%- if qty_in_cart > 0 -%}
+          {{ 'products.product.quantity_in_cart' | t: count: qty_in_cart }}
+        {%- endif -%}
+      </span>
+    </p>
+
+    <div class="product-form__dynamic">
+      {{ form | payment_button }}
+    </div>
+  {%- endform -%}
+</product-form>
+
+{%- if show_sticky -%}
+  <div class="product-sticky-bar" data-sticky-atc>
+    <div class="product-sticky-bar__inner container">
+      <div class="media media--contain product-sticky-bar__media">
+        {%- if sticky_media != blank -%}
+          <img
+            src="{{ sticky_media.preview_image | image_url: width: 96 }}"
+            srcset="{{ sticky_media.preview_image | image_url: width: 96 }} 1x, {{ sticky_media.preview_image | image_url: width: 192 }} 2x"
+            alt=""
+            width="48"
+            height="48"
+            loading="lazy"
+            data-sticky-image
+          >
+        {%- else -%}
+          {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+        {%- endif -%}
+      </div>
+
+      <div class="product-sticky-bar__meta">
+        <span class="product-sticky-bar__title">{{ product.title | escape }}</span>
+        {%- comment -%}
+          dir="ltr" isolates the money run the way snippets/price.liquid does for
+          every other price in the theme — without it the ₪ sign and the decimals
+          can reorder inside the RTL bar. It lives on the element rather than being
+          re-applied by JS because section-main-product.js updates this node with
+          textContent on every variant change, which keeps the attribute.
+        {%- endcomment -%}
+        <span class="product-sticky-bar__price" dir="ltr" data-sticky-price>
+          {{- current_variant.price | money -}}
+        </span>
+      </div>
+
+      <button
+        type="submit"
+        form="{{ product_form_id }}"
+        class="btn product-sticky-bar__btn"
+        data-sticky-add
+        {% if current_variant.available == false %}disabled aria-disabled="true"{% endif %}
+      >
+        {% render 'icon', name: 'cart-add', size: 18 %}
+        <span data-sticky-add-text>
+          {%- if current_variant.available -%}
+            {{ 'products.product.add_to_cart' | t }}
+          {%- else -%}
+            {{ 'products.product.sold_out' | t }}
+          {%- endif -%}
+        </span>
+      </button>
+    </div>
+  </div>
+{%- endif -%}

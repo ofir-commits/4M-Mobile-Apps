@@ -1,0 +1,370 @@
+{{ 'section-customers.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'section-customers.js' | asset_url }}" defer="defer"></script>
+
+{%- comment -%}
+  Single order: status first, then the line items, then the money.
+  Line items reuse .table (stacked rows on phones); totals and addresses sit in
+  panels beside them on desktop.
+{%- endcomment -%}
+{%- liquid
+  assign order_date = order.created_at | date: '%d.%m.%Y'
+
+  case order.financial_status
+    when 'paid', 'partially_refunded'
+      assign fin_class = 'order-status--ok'
+    when 'pending', 'authorized', 'partially_paid'
+      assign fin_class = 'order-status--wait'
+    when 'refunded', 'voided'
+      assign fin_class = 'order-status--off'
+    else
+      assign fin_class = ''
+  endcase
+
+  case order.fulfillment_status
+    when 'fulfilled'
+      assign ful_class = 'order-status--ok'
+    when 'partial'
+      assign ful_class = 'order-status--wait'
+    else
+      assign ful_class = ''
+  endcase
+
+  comment
+    order.*_status_label and order.cancel_reason_label are Shopify platform
+    strings ("Paid", "Unfulfilled", "inventory") that never pass through this
+    theme's locale file — the cancel reason was the worst of them, rendering the
+    Hebrew customer.order.cancelled_reason wrapper as "סיבה: inventory". The
+    cases above already prove the stable handle is in hand; look the Hebrew up
+    off that handle the way sections/footer.liquid does and keep Shopify's label
+    as the fallback. Done outside the case arms so statuses that carry no badge
+    colour (scheduled, on_hold, restocked, expired) are translated too, and an
+    empty fulfillment handle — Liquid's value until something ships — is
+    normalised instead of falling through to Shopify's English "Unfulfilled".
+  endcomment
+  assign fin_key = 'customer.order.statuses.financial.' | append: order.financial_status
+  assign fin_label = fin_key | t
+  if fin_label contains 'Translation missing'
+    assign fin_label = order.financial_status_label
+  endif
+
+  assign ful_handle = order.fulfillment_status | default: 'unfulfilled'
+  assign ful_key = 'customer.order.statuses.fulfillment.' | append: ful_handle
+  assign ful_label = ful_key | t
+  if ful_label contains 'Translation missing'
+    assign ful_label = order.fulfillment_status_label
+  endif
+
+  assign cancel_key = 'customer.order.cancel_reason.' | append: order.cancel_reason
+  assign cancel_label = cancel_key | t
+  if cancel_label contains 'Translation missing'
+    assign cancel_label = order.cancel_reason_label
+  endif
+-%}
+
+<section class="section account-section">
+  <div class="container">
+    {%- if settings.show_breadcrumbs -%}
+      <nav class="breadcrumbs account-crumbs" aria-label="{{ 'general.breadcrumbs.label' | t }}">
+        <a href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">
+          {% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}
+        </span>
+        <a href="{{ routes.account_url }}">{{ 'customer.account.title' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">
+          {% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}
+        </span>
+        <span class="breadcrumbs__current" aria-current="page">{{ order.name }}</span>
+      </nav>
+    {%- endif -%}
+
+    <header class="account-header order-header">
+      <div class="account-header__text">
+        <span class="text-eyebrow">{{ 'customer.account.title' | t }}</span>
+        <h1 class="order-header__title">{{ 'customer.order.title' | t: name: order.name }}</h1>
+        <div class="order-header__meta">
+          <time datetime="{{ order.created_at | date: '%Y-%m-%d' }}">
+            {{- 'customer.order.date_html' | t: date: order_date -}}
+          </time>
+          <span class="badge order-status order-status--lg {{ fin_class }}">{{ fin_label | escape }}</span>
+          <span class="badge order-status order-status--lg {{ ful_class }}">{{ ful_label | escape }}</span>
+        </div>
+      </div>
+
+      <div class="account-header__actions">
+        {%- if section.settings.show_print -%}
+          <button type="button" class="btn btn--ghost btn--sm" data-print-page>
+            {% render 'icon', name: 'clipboard', size: 16 %}
+            {{ section.settings.print_label | escape }}
+          </button>
+        {%- endif -%}
+        <a class="btn btn--outline btn--sm" href="{{ routes.account_url }}">
+          {% render 'icon', name: 'arrow-left', size: 16, class: 'icon--dir' %}
+          {{ 'customer.account.return' | t }}
+        </a>
+      </div>
+    </header>
+
+    {%- if order.cancelled -%}
+      {%- assign cancelled_date = order.cancelled_at | date: '%d.%m.%Y' -%}
+      <div class="order-alert" role="status">
+        {% render 'icon', name: 'alert', size: 20 %}
+        <div>
+          <p class="order-alert__title">{{ 'customer.order.cancelled_html' | t: date: cancelled_date }}</p>
+          {%- if order.cancel_reason_label != blank -%}
+            <p class="order-alert__reason">
+              {{- 'customer.order.cancelled_reason' | t: reason: cancel_label -}}
+            </p>
+          {%- endif -%}
+        </div>
+      </div>
+    {%- endif -%}
+
+    <div class="order-layout">
+      {%- # ---------- Line items ---------- -%}
+      <div class="card orders-card">
+        <div class="orders-card__head">
+          {% render 'icon', name: 'package', size: 20 %}
+          <h2 class="orders-card__title">{{ section.settings.items_title | escape }}</h2>
+          <span class="badge badge--outline">{{ order.line_items.size }}</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table table--stack order-table">
+            <caption class="visually-hidden">{{ 'customer.order.title' | t: name: order.name }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{{ 'customer.order.product' | t }}</th>
+                <th scope="col">{{ 'customer.order.sku' | t }}</th>
+                <th scope="col">{{ 'customer.order.price' | t }}</th>
+                <th scope="col">{{ 'customer.order.quantity' | t }}</th>
+                <th scope="col">{{ 'customer.order.total' | t }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {%- for line_item in order.line_items -%}
+                <tr>
+                  <td class="cell-product" data-label="{{ 'customer.order.product' | t }}">
+                    <div class="order-line">
+                      <div class="order-line__media media media--square media--contain">
+                        {%- if line_item.image -%}
+                          <img
+                            src="{{ line_item.image | image_url: width: 128 }}"
+                            srcset="{{ line_item.image | image_url: width: 64 }} 1x, {{ line_item.image | image_url: width: 128 }} 2x"
+                            alt="{{ line_item.title | escape }}"
+                            width="64"
+                            height="64"
+                            loading="lazy"
+                            decoding="async"
+                          >
+                        {%- else -%}
+                          {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+                        {%- endif -%}
+                      </div>
+                      <div class="order-line__info">
+                        {%- if line_item.url != blank -%}
+                          <a class="order-line__title" href="{{ line_item.url }}">{{ line_item.title }}</a>
+                        {%- else -%}
+                          <span class="order-line__title">{{ line_item.title }}</span>
+                        {%- endif -%}
+
+                        {%- if line_item.variant.title != blank and line_item.variant.title != 'Default Title' -%}
+                          <span class="text-muted fs-sm">{{ line_item.variant.title }}</span>
+                        {%- endif -%}
+
+                        {%- for discount_allocation in line_item.line_level_discount_allocations -%}
+                          <span class="order-line__discount">
+                            {% render 'icon', name: 'tag', size: 14 %}
+                            {{ discount_allocation.discount_application.title }}
+                            (-{{ discount_allocation.amount | money }})
+                          </span>
+                        {%- endfor -%}
+
+                        {%- if line_item.fulfillment -%}
+                          {%- assign fulfilled_date = line_item.fulfillment.created_at | date: '%d.%m.%Y' -%}
+                          <div class="order-line__tracking">
+                            <span class="order-line__tracking-row">
+                              {% render 'icon', name: 'truck', size: 16 %}
+                              {{ 'customer.order.fulfilled_at_html' | t: date: fulfilled_date }}
+                            </span>
+                            {%- if line_item.fulfillment.tracking_company != blank or line_item.fulfillment.tracking_number != blank -%}
+                              {%- liquid
+                                comment
+                                  Carriers are mostly proper nouns that stay Latin
+                                  (UPS, DHL), but the ones with a real Hebrew name —
+                                  and Shopify's generic "Other"/"Custom" placeholders
+                                  — should not appear in English next to a Hebrew
+                                  tracking row. Guarded lookup, so any carrier not
+                                  enumerated passes through exactly as Shopify sent it.
+                                endcomment
+                                assign carrier_handle = line_item.fulfillment.tracking_company | handleize | replace: '-', '_'
+                                assign carrier_key = 'customer.order.carriers.' | append: carrier_handle
+                                assign carrier_label = carrier_key | t
+                                if carrier_label contains 'Translation missing'
+                                  assign carrier_label = line_item.fulfillment.tracking_company
+                                endif
+                              -%}
+                              <span class="order-line__tracking-row text-muted">
+                                {{ carrier_label | escape }}
+                                {%- if line_item.fulfillment.tracking_number != blank %}
+                                  <bdi dir="ltr">{{ line_item.fulfillment.tracking_number }}</bdi>
+                                {%- endif -%}
+                              </span>
+                            {%- endif -%}
+                            {%- if line_item.fulfillment.tracking_url != blank -%}
+                              <a
+                                class="link"
+                                href="{{ line_item.fulfillment.tracking_url }}"
+                                target="_blank"
+                                rel="noopener"
+                                aria-describedby="a11y-new-window-message"
+                              >
+                                {{ 'customer.order.track_shipment' | t }}
+                              </a>
+                            {%- endif -%}
+                          </div>
+                        {%- endif -%}
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="{{ 'customer.order.sku' | t }}" class="order-line__sku">
+                    {%- if line_item.sku != blank -%}
+                      <bdi dir="ltr">{{ line_item.sku }}</bdi>
+                    {%- else -%}
+                      <span aria-hidden="true">-</span>
+                    {%- endif -%}
+                  </td>
+                  <td data-label="{{ 'customer.order.price' | t }}" class="order-line__price">
+                    {%- if line_item.original_price != line_item.final_price -%}
+                      <s class="text-muted">{{ line_item.original_price | money }}</s>
+                      {{ line_item.final_price | money }}
+                    {%- else -%}
+                      {{ line_item.final_price | money }}
+                    {%- endif -%}
+                  </td>
+                  <td data-label="{{ 'customer.order.quantity' | t }}">{{ line_item.quantity }}</td>
+                  <td data-label="{{ 'customer.order.total' | t }}" class="orders-table__total">
+                    {%- if line_item.original_line_price != line_item.final_line_price -%}
+                      <s class="text-muted">{{ line_item.original_line_price | money }}</s>
+                      {{ line_item.final_line_price | money }}
+                    {%- else -%}
+                      {{ line_item.final_line_price | money }}
+                    {%- endif -%}
+                  </td>
+                </tr>
+              {%- endfor -%}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {%- # ---------- Totals + addresses ---------- -%}
+      <aside class="order-side">
+        <div class="panel order-totals">
+          <h2 class="account-panel__title">
+            {% render 'icon', name: 'credit-card', size: 19 %}
+            {{ section.settings.totals_title | escape }}
+          </h2>
+
+          <div class="order-totals__row">
+            <span class="order-totals__label">{{ 'customer.order.subtotal' | t }}</span>
+            <span class="order-totals__value">{{ order.line_items_subtotal_price | money }}</span>
+          </div>
+
+          {%- for discount_application in order.cart_level_discount_applications -%}
+            <div class="order-totals__row order-totals__row--discount">
+              <span class="order-totals__label">
+                {% render 'icon', name: 'tag', size: 14 %}
+                {{ 'customer.order.discount' | t }} ({{ discount_application.title }})
+              </span>
+              <span class="order-totals__value">-{{ discount_application.total_allocated_amount | money }}</span>
+            </div>
+          {%- endfor -%}
+
+          {%- for shipping_method in order.shipping_methods -%}
+            <div class="order-totals__row">
+              <span class="order-totals__label">{{ 'customer.order.shipping' | t }} ({{ shipping_method.title }})</span>
+              <span class="order-totals__value">{{ shipping_method.price | money }}</span>
+            </div>
+          {%- endfor -%}
+
+          {%- for tax_line in order.tax_lines -%}
+            {%- comment -%}
+              tax_line.title is Shopify's own English tax name ("VAT", "Tax") and
+              cannot be reached from the locale file. The row is already labelled
+              מע"מ — the only Israeli tax this store charges — so the title adds no
+              information and is dropped rather than shown in English; the rate
+              still tells the shopper what was applied.
+            {%- endcomment -%}
+            <div class="order-totals__row">
+              <span class="order-totals__label">
+                {{- 'customer.order.tax' | t }} ({{ tax_line.rate | times: 100 | round: 1 }}%)
+              </span>
+              <span class="order-totals__value">{{ tax_line.price | money }}</span>
+            </div>
+          {%- endfor -%}
+
+          <div class="order-totals__row order-totals__row--grand">
+            <span class="order-totals__label">{{ 'customer.order.total' | t }}</span>
+            <span class="order-totals__value">{{ order.total_price | money }}</span>
+          </div>
+        </div>
+
+        {%- if order.shipping_address -%}
+          <div class="panel account-panel">
+            <h2 class="account-panel__title">
+              {% render 'icon', name: 'truck', size: 19 %}
+              {{ 'customer.order.shipping_address' | t }}
+            </h2>
+            <address class="account-address">{{ order.shipping_address | format_address }}</address>
+          </div>
+        {%- endif -%}
+
+        {%- if order.billing_address -%}
+          <div class="panel account-panel">
+            <h2 class="account-panel__title">
+              {% render 'icon', name: 'credit-card', size: 19 %}
+              {{ 'customer.order.billing_address' | t }}
+            </h2>
+            <address class="account-address">{{ order.billing_address | format_address }}</address>
+          </div>
+        {%- endif -%}
+      </aside>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "פרטי הזמנה",
+  "settings": [
+    {
+      "type": "text",
+      "id": "items_title",
+      "label": "כותרת טבלת הפריטים",
+      "default": "פריטים בהזמנה"
+    },
+    {
+      "type": "text",
+      "id": "totals_title",
+      "label": "כותרת סיכום התשלום",
+      "default": "סיכום ההזמנה"
+    },
+    {
+      "type": "header",
+      "content": "הדפסה"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_print",
+      "label": "הצגת כפתור הדפסה",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "print_label",
+      "label": "טקסט הכפתור",
+      "default": "הדפסת ההזמנה"
+    }
+  ]
+}
+{% endschema %}

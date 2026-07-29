@@ -1,0 +1,195 @@
+/* =========================================================
+   Shilo Pro — Image with text (v2 "Clarity")
+   Editorial two-column split. Image in a soft card frame,
+   copy column vertically centred and measure-limited.
+   Stacks on mobile with the image first.
+   ========================================================= */
+
+.image-text {
+  display: grid;
+  gap: clamp(1.6rem, 3.5vw, 4rem);
+  align-items: center;
+}
+
+@media (min-width: 750px) {
+  .image-text { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .image-text--flip .image-text__media-wrap { order: 2; }
+  .image-text--flip .image-text__content { order: 1; }
+}
+
+/* ----- Media side ----- */
+.image-text__media-wrap { min-inline-size: 0; }
+
+.image-text__media {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Logo mode. A brand logo is not a photograph and must never be scaled up.
+   The Makita collection image is the brand wordmark at 500x200; the old code
+   inferred "contain + padding" for any collection image and base.css stretches a
+   .media img to fill the frame, so a 500px source was being drawn across roughly
+   600 CSS px. Sizing the image intrinsically keeps it honest, and the white plate
+   plus generous air makes it read as a deliberate brand mark rather than a failed
+   photo. `position: static` is required to escape base.css's absolute inset-0
+   fill so the grid can centre it.
+
+   The cap is 250px, and that is arithmetic rather than taste. An earlier note
+   here claimed the 300px cap left the source "at worst 1.7x, which is crisp" -
+   true only at device-pixel-ratio 1, which is now the rare screen. 300 CSS px
+   needs 600 device px on a 2x laptop and 900 on a 3x phone (where the grid has
+   collapsed to one column and the mark still takes its full cap), against the
+   500 that exist: 0.83x and 0.56x, i.e. UPSAMPLED on nearly every real device.
+   That is the "still not sharp" report. 500/250 is exactly 2x, so the mark is
+   genuinely crisp on every 2x display and merely acceptable on 3x. With a 500px
+   raster you can have a bigger mark or a sharper one, never both - which is why
+   .image-text__media--badge below exists as the sharp option.
+
+   THE REAL FIX is a resolution-independent source. Ask the Makita importer for
+   the official vector from their brand kit (the copy already says "מיבואן רשמי",
+   so that channel exists) and do NOT substitute a traced "free logo SVG" - wrong
+   letterforms, invented colour, worse provenance than this PNG. Drop the file in
+   as assets/makita-wordmark.svg and inline it with the inline_asset_content
+   filter. One trap when that happens: base.css styles `.media > svg` as
+   `position: absolute; inset: 0; 100%/100%; object-fit: cover`, so an inline SVG
+   in logo mode needs its own `.image-text__media--logo > svg` rule mirroring the
+   `> img` rule below, or it will be stretched to the frame - the same class of
+   bug this cap exists to undo. */
+.image-text__media--logo {
+  display: grid;
+  place-items: center;
+  background: var(--color-surface);
+  padding: clamp(1.75rem, 5vw, 3.5rem);
+}
+
+.image-text__media--logo > img {
+  position: static;
+  inline-size: auto;
+  block-size: auto;
+  max-inline-size: min(250px, 100%);
+  max-block-size: 100%;
+  object-fit: contain;
+}
+
+/* ----- Badge mode: product photo leads, the mark rides on it -----
+   The only configuration available today in which the Makita mark is actually
+   sharp. The photo carries the frame - the collection's product masters really
+   are 1500x1500 (DTD153Z.webp, TD110.webp, makita-6952.webp), so the section's
+   cover srcset feeds it real detail up to 1200w - and the 500px wordmark is demoted
+   to a small plate where its own resolution finally exceeds what the screen
+   asks for. Until a vector arrives, this is the honest way to show the brand. */
+.image-text__media--badge > img {
+  /* Catalogue parts are shown contained on white per DESIGN-SYSTEM.md, and cover
+     would crop a quarter off a square tool shot - usually the chuck or the grip.
+     base.css absolutely positions this img at inset 0, and an absolutely
+     positioned box ignores padding on its parent, so the breathing room has to
+     come from padding on the image itself: object-fit fits the picture inside the
+     content box, so `contain` respects it. */
+  object-fit: contain;
+  padding: clamp(0.75rem, 3%, 1.75rem);
+  /* Reserve most - not all - of the block-end strip. This lands the plate in the
+     photo's own white margin rather than across the tool, while a reservation
+     that cleared the plate completely would shrink the picture by a quarter,
+     which costs more sharpness than it buys clarity. */
+  padding-block-end: clamp(3.5rem, 12%, 5rem);
+}
+
+/* A <span>, not a second .media child: base.css pins every direct img/svg child
+   of .media to inset-0 + cover, which would stretch the mark across the photo
+   instead of letting it rest on top. Opaque surface + hairline + resting shadow
+   because a wordmark on a white product background needs an edge to read as a
+   deliberate layer rather than a stray sticker. */
+.image-text__badge {
+  position: absolute;
+  inset-block-end: clamp(0.75rem, 2.5%, 1.25rem);
+  inset-inline-start: clamp(0.75rem, 2.5%, 1.25rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-inline-size: calc(100% - 1.5rem);
+  padding: 0.55rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 104-128 CSS px against a 500px source is 3.9x-4.8x, so the wordmark is
+   genuinely crisp on any phone. Do NOT enlarge this to "make the brand bigger":
+   the sharpness the owner asked for is precisely what the small size buys, and
+   every px added here spends it. Enlarging is only safe once the vector lands. */
+.image-text__badge > img {
+  inline-size: clamp(104px, 24vw, 128px);
+  block-size: auto;
+  max-inline-size: 100%;
+  object-fit: contain;
+}
+
+/* ----- The frame IS the link -----
+   An <a> in place of the <div> when the section has a destination - not a wrapper
+   and not an inset overlay - so the frame and the hit area stay one box and
+   nothing interactive can end up nested.
+   Deliberately no `display` here: .media in base.css already gives block and
+   .image-text__media--logo gives grid. Both are single-class selectors, so
+   declaring display in this rule would beat --logo on source order and knock the
+   centred logo into the corner. */
+.image-text__media--link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease,
+              box-shadow var(--duration-fast) ease,
+              transform var(--duration-fast) var(--ease-out);
+}
+
+/* The complaint was "I clicked and nothing happened", so the frame also has to
+   look clickable. Same affordance as .brand-tile in base.css, deliberately: the
+   two brand surfaces sit on the same page and should answer to a cursor the same
+   way. Border-strong rather than accent, because a red edge would fight the
+   brand colour inside the frame. --shadow-md because the frame rests at
+   --shadow-sm, so anything less is not a visible lift. */
+.image-text__media--link:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* The global :focus-visible resets border-radius to --radius-sm; restate the card
+   radius so a focused frame keeps its own corners. This section's stylesheet
+   loads after base.css, so it wins - keep it explicit anyway in case the CSS is
+   ever inlined into the head above base.css. */
+.image-text__media--link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-card);
+}
+
+/* base.css's reduced-motion block only collapses transition-duration; the lift
+   is a hover state rather than an animation, so it has to be dropped by hand. */
+@media (prefers-reduced-motion: reduce) {
+  .image-text__media--link:hover { transform: none; }
+}
+
+/* ----- Copy side ----- */
+.image-text__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-inline-size: 0;
+  max-inline-size: 52ch;
+}
+
+/* The flex gap already spaces the stack; drop the eyebrow's own margin. */
+.image-text__content .text-eyebrow { margin-block-end: 0; }
+
+.image-text__heading {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.image-text__text { color: var(--color-text); }
+
+.image-text__actions { margin-block-start: 0.55rem; }

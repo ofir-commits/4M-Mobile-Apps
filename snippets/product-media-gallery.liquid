@@ -1,0 +1,317 @@
+{%- comment -%}
+  Renders the product page media gallery: main stage, thumbnail strip and a
+  click-to-zoom overlay built on the .modal primitive from base.css.
+
+  Usage — two calls, because the overlay must not live inside the sticky media
+  column (a sticky element creates a stacking context, which would paint the
+  overlay underneath the drawer scrim):
+
+    {% render 'product-media-gallery',
+       product: product, section_id: section.id,
+       enable_zoom: section.settings.enable_zoom %}                 → gallery
+    {% render 'product-media-gallery',
+       product: product, section_id: section.id,
+       enable_zoom: section.settings.enable_zoom, part: 'zoom' %}   → overlay
+
+  Params:
+    product     {Object}  product (required)
+    section_id  {String}  section id (required — keeps ids unique)
+    enable_zoom {Boolean} render the zoom overlay (default true)
+    part        {String}  'gallery' (default) or 'zoom'
+
+  JS contract (assets/section-main-product.js):
+    [data-product-gallery]        gallery root
+    .product-gallery__item        one per media, keyed by data-media-id, the
+                                  visible one carries .is-active
+    [data-gallery-thumbs]         thumb strip, arrow-key navigable
+    [data-thumb]                  thumb button, keyed by data-media-id, the
+                                  active one carries .is-active + aria-current
+    [data-gallery-prev/next]      step through every media item
+    [data-zoom-prev/next]         step through the images inside the overlay
+    [data-gallery-counter]        "3 / 8" position read-out
+    [data-product-zoom]           the overlay, opened via [data-drawer-open]
+    [data-zoom-item]              full-size frame inside the overlay
+  Catalogue parts are never cropped: every frame is .media--contain on a
+  white surface.
+{%- endcomment -%}
+{%- liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign featured_media = current_variant.featured_media | default: product.featured_media
+  assign media_count = product.media.size
+  assign zoom_id = 'ProductZoom-' | append: section_id
+  assign part = part | default: 'gallery'
+
+  assign zoom_enabled = true
+  if enable_zoom == false
+    assign zoom_enabled = false
+  endif
+  if media_count == 0
+    assign zoom_enabled = false
+  endif
+
+  assign active_index = 1
+  for media in product.media
+    if media.id == featured_media.id
+      assign active_index = forloop.index
+      break
+    endif
+  endfor
+
+  assign on_sale = false
+  if product.compare_at_price > product.price
+    assign on_sale = true
+  endif
+-%}
+
+{%- if part == 'zoom' -%}
+  {%- if zoom_enabled -%}
+    <div
+      class="modal product-zoom"
+      id="{{ zoom_id }}"
+      data-product-zoom
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-label="{{ 'products.product.media.gallery_viewer' | t }}"
+    >
+      <div class="modal__content product-zoom__content">
+        <div class="product-zoom__bar">
+          {%- if media_count > 1 -%}
+            <span class="product-zoom__counter" dir="ltr" aria-hidden="true">
+              <span data-zoom-counter>{{ active_index }}</span> / {{ media_count }}
+            </span>
+          {%- else -%}
+            <span></span>
+          {%- endif -%}
+          <button
+            type="button"
+            class="btn-icon product-zoom__close"
+            data-drawer-close
+            aria-label="{{ 'general.accessibility.close' | t }}"
+          >
+            {% render 'icon', name: 'close', size: 22 %}
+          </button>
+        </div>
+
+        <div class="product-zoom__stage">
+          {%- for media in product.media -%}
+            {%- if media.media_type == 'image' -%}
+              {%- liquid
+                assign is_active = false
+                if media.id == featured_media.id
+                  assign is_active = true
+                elsif featured_media == blank and forloop.first
+                  assign is_active = true
+                endif
+              -%}
+              <span
+                class="media media--contain product-zoom__frame{% if is_active %} is-active{% endif %}"
+                data-zoom-item
+                data-media-id="{{ media.id }}"
+                {% unless is_active %}aria-hidden="true"{% endunless %}
+              >
+                <img
+                  srcset="
+                    {{ media.preview_image | image_url: width: 960 }} 960w,
+                    {{ media.preview_image | image_url: width: 1400 }} 1400w,
+                    {{ media.preview_image | image_url: width: 1800 }} 1800w
+                  "
+                  src="{{ media.preview_image | image_url: width: 1400 }}"
+                  sizes="(min-width: 1100px) 1000px, 94vw"
+                  alt="{{ media.alt | default: product.title | escape }}"
+                  width="{{ media.preview_image.width }}"
+                  height="{{ media.preview_image.height }}"
+                  loading="lazy"
+                >
+              </span>
+            {%- endif -%}
+          {%- endfor -%}
+
+          {%- if media_count > 1 -%}
+            <div class="product-zoom__nav">
+              <button
+                type="button"
+                class="product-zoom__arrow"
+                data-zoom-prev
+                aria-label="{{ 'general.accessibility.previous_slide' | t }}"
+              >
+                {% render 'icon', name: 'chevron-left', size: 22, class: 'icon--dir' %}
+              </button>
+              <button
+                type="button"
+                class="product-zoom__arrow"
+                data-zoom-next
+                aria-label="{{ 'general.accessibility.next_slide' | t }}"
+              >
+                {% render 'icon', name: 'chevron-right', size: 22, class: 'icon--dir' %}
+              </button>
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+
+{%- else -%}
+  <div class="product-gallery" data-product-gallery id="MediaGallery-{{ section_id }}">
+    <div
+      class="product-gallery__stage card"
+      role="region"
+      aria-label="{{ 'products.product.media.gallery_viewer' | t }}"
+    >
+      <div class="product-gallery__badges">
+        {%- if product.available == false -%}
+          <span class="badge badge--soldout">{{ 'products.product.sold_out' | t }}</span>
+        {%- elsif on_sale -%}
+          <span class="badge badge--sale">
+            {%- if settings.show_sale_badge_percent -%}
+              {%- assign discount = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round -%}
+              {{ discount }}%-
+            {%- else -%}
+              {{ 'products.product.on_sale' | t }}
+            {%- endif -%}
+          </span>
+        {%- endif -%}
+      </div>
+
+      {%- if media_count > 0 -%}
+        {%- for media in product.media -%}
+          {%- liquid
+            assign is_active = false
+            if media.id == featured_media.id
+              assign is_active = true
+            elsif featured_media == blank and forloop.first
+              assign is_active = true
+            endif
+          -%}
+          <div
+            class="product-gallery__item{% if is_active %} is-active{% endif %}"
+            data-media-id="{{ media.id }}"
+            data-media-type="{{ media.media_type }}"
+            {% unless is_active %}aria-hidden="true"{% endunless %}
+          >
+            {%- case media.media_type -%}
+              {%- when 'image' -%}
+                {%- capture media_image -%}
+                  <span class="media media--contain product-gallery__frame">
+                    <img
+                      srcset="
+                        {{ media.preview_image | image_url: width: 480 }} 480w,
+                        {{ media.preview_image | image_url: width: 720 }} 720w,
+                        {{ media.preview_image | image_url: width: 960 }} 960w,
+                        {{ media.preview_image | image_url: width: 1200 }} 1200w,
+                        {{ media.preview_image | image_url: width: 1600 }} 1600w
+                      "
+                      src="{{ media.preview_image | image_url: width: 960 }}"
+                      sizes="(min-width: 1200px) 700px, (min-width: 990px) 55vw, 92vw"
+                      alt="{{ media.alt | default: product.title | escape }}"
+                      width="{{ media.preview_image.width }}"
+                      height="{{ media.preview_image.height }}"
+                      loading="{% if is_active %}eager{% else %}lazy{% endif %}"
+                      {% if is_active %}fetchpriority="high"{% endif %}
+                    >
+                  </span>
+                {%- endcapture -%}
+                {%- if zoom_enabled -%}
+                  <button
+                    type="button"
+                    class="product-gallery__zoom"
+                    id="ZoomTrigger-{{ section_id }}-{{ forloop.index }}"
+                    data-drawer-open="{{ zoom_id }}"
+                    data-media-id="{{ media.id }}"
+                    aria-label="{{ 'products.product.media.open_media' | t: index: forloop.index }}"
+                    {% unless is_active %}tabindex="-1"{% endunless %}
+                  >
+                    {{ media_image }}
+                    <span class="product-gallery__zoom-hint" aria-hidden="true">
+                      {% render 'icon', name: 'expand', size: 18 %}
+                    </span>
+                  </button>
+                {%- else -%}
+                  {{ media_image }}
+                {%- endif -%}
+              {%- else -%}
+                {{ media | media_tag: image_size: '1024x', class: 'product-gallery__media-el' }}
+            {%- endcase -%}
+          </div>
+        {%- endfor -%}
+      {%- else -%}
+        <div class="product-gallery__item product-gallery__item--placeholder is-active" data-media-id="placeholder">
+          {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+        </div>
+      {%- endif -%}
+
+      {%- if media_count > 1 -%}
+        <div class="product-gallery__nav">
+          <button
+            type="button"
+            class="product-gallery__arrow"
+            data-gallery-prev
+            aria-label="{{ 'general.accessibility.previous_slide' | t }}"
+          >
+            {% render 'icon', name: 'chevron-left', size: 20, class: 'icon--dir' %}
+          </button>
+          <button
+            type="button"
+            class="product-gallery__arrow"
+            data-gallery-next
+            aria-label="{{ 'general.accessibility.next_slide' | t }}"
+          >
+            {% render 'icon', name: 'chevron-right', size: 20, class: 'icon--dir' %}
+          </button>
+        </div>
+
+        <span class="product-gallery__counter" aria-hidden="true" dir="ltr">
+          <span data-gallery-counter>{{ active_index }}</span> / {{ media_count }}
+        </span>
+      {%- endif -%}
+    </div>
+
+    {%- if media_count > 1 -%}
+      <div
+        class="product-gallery__thumbs"
+        data-gallery-thumbs
+        role="group"
+        aria-label="{{ 'products.product.media.gallery_viewer' | t }}"
+      >
+        {%- for media in product.media -%}
+          {%- liquid
+            assign is_active = false
+            if media.id == featured_media.id
+              assign is_active = true
+            elsif featured_media == blank and forloop.first
+              assign is_active = true
+            endif
+          -%}
+          <button
+            type="button"
+            class="product-gallery__thumb{% if is_active %} is-active{% endif %}"
+            data-thumb
+            data-media-id="{{ media.id }}"
+            aria-label="{{ 'products.product.media.load_image' | t: index: forloop.index }}"
+            aria-current="{% if is_active %}true{% else %}false{% endif %}"
+          >
+            <span class="media media--contain product-gallery__thumb-frame">
+              <img
+                src="{{ media.preview_image | image_url: width: 160 }}"
+                srcset="{{ media.preview_image | image_url: width: 160 }} 1x, {{ media.preview_image | image_url: width: 320 }} 2x"
+                alt=""
+                width="80"
+                height="80"
+                loading="lazy"
+                aria-hidden="true"
+              >
+            </span>
+            {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
+              <span class="product-gallery__thumb-badge" aria-hidden="true">
+                {% render 'icon', name: 'play', size: 12 %}
+              </span>
+            {%- elsif media.media_type == 'model' -%}
+              <span class="product-gallery__thumb-badge product-gallery__thumb-badge--model" aria-hidden="true">3D</span>
+            {%- endif -%}
+          </button>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+{%- endif -%}

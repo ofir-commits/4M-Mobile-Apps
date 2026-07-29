@@ -1,0 +1,64 @@
+{%- comment -%}
+  Recently viewed products. Rendered client-side from localStorage by
+  assets/recently-viewed.js, which pulls each card through the
+  product-card-render section so the markup matches the rest of the store.
+  The element hides itself when there is no history, so first-time visitors
+  never see an empty band.
+{%- endcomment -%}
+
+<div class="section{% if section.settings.alt_background %} section--alt{% endif %} section--tight">
+  <div class="container">
+    <recently-viewed
+      class="recently-viewed"
+      data-card-section-id="product-card-render"
+      data-limit="{{ section.settings.products_limit }}"
+      {% if product %}data-exclude="{{ product.handle }}"{% endif %}
+      hidden
+    >
+      <div class="section-header">
+        <div class="section-header__text">
+          <h2 class="section-header__heading h3">{{ section.settings.heading }}</h2>
+        </div>
+      </div>
+      <div
+        class="recently-viewed__row scroll-row"
+        data-recently-viewed-target
+        aria-label="{{ section.settings.heading | escape }}"
+      ></div>
+    </recently-viewed>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "נצפו לאחרונה",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "נצפו לאחרונה"
+    },
+    {
+      "type": "range",
+      "id": "products_limit",
+      "label": "מספר מוצרים",
+      "min": 4,
+      "max": 12,
+      "step": 1,
+      "default": 8
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "נצפו לאחרונה"
+    }
+  ]
+}
+{% endschema %}

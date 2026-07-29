@@ -1,0 +1,638 @@
+{{ 'section-image-banner.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  comment
+    Image resolution order: section image -> chosen collection's image -> designed ink field.
+  endcomment
+  assign hero_image = section.settings.image
+  if hero_image == blank and section.settings.collection != blank
+    assign hero_image = section.settings.collection.image
+  endif
+  assign mobile_image = section.settings.mobile_image | default: hero_image
+  assign overlay = section.settings.overlay_opacity | default: 0 | divided_by: 100.0
+
+  comment
+    One off-ramp for motion, not two. The merchant's "עוצמת התנועה" and the
+    theme-wide animation switch collapse into the same value here, so a stylesheet
+    never has to reconcile two selectors that can disagree.
+  endcomment
+  assign motion = section.settings.motion_intensity | default: 'full'
+  if settings.enable_animations == false
+    assign motion = 'off'
+  endif
+
+  assign hero_video = section.settings.video
+  assign has_video = false
+  if hero_video != blank
+    assign has_video = true
+  endif
+
+  comment
+    The coded stage is the always-present layer. It renders when there is no
+    photograph to protect, and it also stays on top of an uploaded video at
+    reduced strength — footage on its own reads as stock, the stage makes it read
+    as this store. A still photograph still wins outright: that branch is
+    untouched from before the stage existed.
+  endcomment
+  assign show_stage = false
+  if hero_image == blank or has_video
+    assign show_stage = true
+  endif
+
+  assign is_designed = false
+  if hero_image == blank and has_video == false
+    assign is_designed = true
+  endif
+
+  assign phone_href = ''
+  if settings.store_phone != blank
+    assign phone_digits = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+    assign phone_href = 'tel:' | append: phone_digits
+  endif
+
+  assign button_2_link = section.settings.button_2_link
+  assign button_2_is_phone = false
+  if button_2_link == blank and phone_href != blank
+    assign button_2_link = phone_href
+    assign button_2_is_phone = true
+  endif
+
+  assign has_chips = false
+  if section.settings.chip_1 != blank or section.settings.chip_2 != blank or section.settings.chip_3 != blank
+    assign has_chips = true
+  endif
+  assign trust_chips = section.settings.chip_1 | append: '|~|' | append: section.settings.chip_2 | append: '|~|' | append: section.settings.chip_3 | split: '|~|'
+
+  assign popular_terms = settings.popular_searches | split: ','
+-%}
+
+<section
+  id="ImageBanner-{{ section.id }}"
+  class="image-banner image-banner--{{ section.settings.height }} image-banner--align-{{ section.settings.alignment }} image-banner--motion-{{ motion }}{% if is_designed %} image-banner--designed{% endif %}{% if show_stage %} image-banner--stage{% endif %}{% if has_video %} image-banner--has-video{% endif %}"
+  style="--overlay-opacity: {{ overlay }};"
+>
+  {%- if has_video -%}
+    {%- liquid
+      assign poster = section.settings.video_poster | default: hero_image | default: hero_video.preview_image
+      comment
+        Shopify returns every rendition it produced, ascending, so taking the last
+        match under each ceiling gives the largest acceptable file. A phone gets
+        720p; nobody downloads a 4K master to sit behind a scrim.
+      endcomment
+      assign src_sm = ''
+      assign src_lg = ''
+      for source in hero_video.sources
+        if source.format == 'mp4'
+          if source.height <= 720
+            assign src_sm = source.url
+          endif
+          if source.height <= 1080
+            assign src_lg = source.url
+          endif
+        endif
+      endfor
+    -%}
+    <div class="image-banner__media" data-hero-video>
+      {%- if poster != blank -%}
+        {%- comment -%}
+          A real responsive <img>, not the video's poster= attribute: this way the
+          LCP candidate is an ordinary prioritised image with predictable timing
+          instead of engine-specific poster behaviour. It is also what a visitor
+          keeps looking at if the video never starts.
+        {%- endcomment -%}
+        <img
+          class="image-banner__poster"
+          src="{{ poster | image_url: width: 1800 }}"
+          srcset="{{ poster | image_url: width: 900 }} 900w, {{ poster | image_url: width: 1400 }} 1400w, {{ poster | image_url: width: 1800 }} 1800w, {{ poster | image_url: width: 2400 }} 2400w"
+          sizes="100vw"
+          width="{{ poster.width }}"
+          height="{{ poster.height }}"
+          alt=""
+          loading="eager"
+          fetchpriority="high"
+        >
+      {%- endif -%}
+      {%- if src_lg != blank and motion != 'off' -%}
+        {%- comment -%}
+          preload="none" with no src attribute: zero video bytes compete with the
+          poster during LCP. The script assigns the source and only then reveals
+          it. muted + playsinline are what make autoplay legal on iOS; aria-hidden
+          and tabindex="-1" keep a decorative loop out of the accessibility tree
+          and out of the tab order.
+        {%- endcomment -%}
+        <video
+          class="image-banner__video"
+          muted
+          loop
+          playsinline
+          preload="none"
+          disablepictureinpicture
+          tabindex="-1"
+          aria-hidden="true"
+          data-src-sm="{{ src_sm }}"
+          data-src-lg="{{ src_lg }}"
+        ></video>
+      {%- endif -%}
+    </div>
+    <span class="image-banner__tint" aria-hidden="true"></span>
+  {%- elsif hero_image != blank -%}
+    <picture class="image-banner__media">
+      {%- if mobile_image != blank -%}
+        <source
+          media="(max-width: 749px)"
+          srcset="{{ mobile_image | image_url: width: 600 }} 600w, {{ mobile_image | image_url: width: 900 }} 900w, {{ mobile_image | image_url: width: 1200 }} 1200w"
+          sizes="100vw"
+        >
+      {%- endif -%}
+      <img
+        src="{{ hero_image | image_url: width: 1800 }}"
+        srcset="{{ hero_image | image_url: width: 900 }} 900w, {{ hero_image | image_url: width: 1200 }} 1200w, {{ hero_image | image_url: width: 1500 }} 1500w, {{ hero_image | image_url: width: 1800 }} 1800w, {{ hero_image | image_url: width: 2400 }} 2400w"
+        sizes="100vw"
+        width="{{ hero_image.width }}"
+        height="{{ hero_image.height }}"
+        alt="{{ hero_image.alt | escape }}"
+        loading="eager"
+        fetchpriority="high"
+      >
+    </picture>
+    <span class="image-banner__tint" aria-hidden="true"></span>
+  {%- endif -%}
+
+  {%- if show_stage -%}
+    {%- comment -%}
+      "שולחן השרטוט החי" — the whole stage is decorative and stays out of the
+      accessibility tree. Layer order and the reasoning behind each layer live in
+      assets/section-image-banner.css; only the parts that need markup are here.
+    {%- endcomment -%}
+    <span class="hero-stage__plane hero-stage__plane--far" aria-hidden="true"></span>
+    <span class="hero-stage__plane hero-stage__plane--near" data-hero-parallax="1" aria-hidden="true"></span>
+    <span class="hero-stage__aura" aria-hidden="true"></span>
+    <span class="hero-stage__shaft" aria-hidden="true"></span>
+
+    {%- if motion == 'full' -%}
+      {%- comment -%}
+        Deterministic pseudo-random placement — coprime multipliers against prime-ish
+        moduli, so the 16 motes never line up and the markup is identical on every
+        render (no JS, no cache-busting churn). --x and --y are percentages of the
+        BEAM column, not of the banner, because .hero-stage__motes shares the beam's
+        box and tilt; that is also what keeps the whole effect direction-safe.
+        --dy is paired with --dur so every mote drifts at 12-16 px/s: one updraft
+        carrying particles of different sizes, not sixteen unrelated speeds.
+        The delays are NEGATIVE on purpose: each mote is already mid-flight in the
+        first frame, instead of the hero opening on an empty beam that slowly fills.
+      {%- endcomment -%}
+      <span class="hero-stage__motes" aria-hidden="true">
+        {%- for i in (1..16) -%}
+          {%- liquid
+            assign mx = i | times: 37 | modulo: 82 | plus: 6
+            assign sy = i | times: 53 | modulo: 68
+            assign md = i | times: 29 | modulo: 5 | plus: 3
+            assign st = i | times: 17 | modulo: 14
+            assign my = sy | plus: 2
+            assign mdx = st | minus: 7 | times: 4
+            assign mdy = st | times: 22 | plus: 200
+            assign mdur = st | plus: 17
+            assign mdelay = i | times: 23 | modulo: 19
+          -%}
+          <span
+            class="hero-stage__mote"
+            style="--x: {{ mx }}%; --y: {{ my }}%; --d: {{ md }}px; --dx: {{ mdx }}px; --dy: -{{ mdy }}px; --dur: {{ mdur }}s; --delay: -{{ mdelay }}s;"
+          ></span>
+        {%- endfor -%}
+      </span>
+    {%- endif -%}
+
+    {%- if section.settings.show_detail_drawing -%}
+      {%- comment -%}
+        A timber stud wall in orthographic elevation: top and bottom plate, four
+        studs, a diagonal brace, an ISO centre line, and a red dimension line
+        reading 600 — the standard stud spacing. Every member is a <rect> so it can
+        draw itself with scaleX/scaleY from its own edge; stroke-dashoffset would
+        repaint the whole SVG on every frame. The label is <text> inside the
+        viewBox rather than a positioned <span>, which makes it immune to direction
+        flipping, and direction="ltr" keeps the digits out of bidi reordering.
+      {%- endcomment -%}
+      <span class="hero-stage__draw" data-hero-parallax="-1.6" aria-hidden="true">
+        <svg viewBox="0 0 480 560" fill="none" preserveAspectRatio="xMidYMid meet" focusable="false">
+          <g class="hero-draw__frame">
+            <rect data-draw="x" x="40" y="58" width="400" height="18" style="--d: 0s"></rect>
+            <rect data-draw="x" x="40" y="414" width="400" height="18" style="--d: 0.08s"></rect>
+            <rect data-draw="y" x="86" y="76" width="14" height="338" style="--d: 0.26s"></rect>
+            <rect data-draw="y" x="186" y="76" width="14" height="338" style="--d: 0.34s"></rect>
+            <rect data-draw="y" x="286" y="76" width="14" height="338" style="--d: 0.42s"></rect>
+            <rect data-draw="y" x="386" y="76" width="14" height="338" style="--d: 0.5s"></rect>
+          </g>
+          <g class="hero-draw__brace">
+            <line x1="100" y1="414" x2="386" y2="76"></line>
+          </g>
+          <g class="hero-draw__centre">
+            <line x1="40" y1="245" x2="440" y2="245"></line>
+          </g>
+          <g class="hero-draw__dim">
+            <line class="hero-draw__witness hero-draw__witness--a" x1="93" y1="440" x2="93" y2="502"></line>
+            <line class="hero-draw__witness hero-draw__witness--b" x1="193" y1="440" x2="193" y2="502"></line>
+            <line class="hero-draw__dimline" x1="93" y1="486" x2="193" y2="486"></line>
+            <path class="hero-draw__tick hero-draw__tick--a" d="M100 480 L93 486 L100 492"></path>
+            <path class="hero-draw__tick hero-draw__tick--b" d="M186 480 L193 486 L186 492"></path>
+          </g>
+          <text class="hero-draw__label" x="143" y="472" text-anchor="middle" direction="ltr">600</text>
+        </svg>
+      </span>
+    {%- endif -%}
+
+    {%- if motion != 'off' -%}
+      <span class="hero-stage__level" aria-hidden="true"></span>
+    {%- endif -%}
+  {%- endif -%}
+
+  <span class="image-banner__scrim" aria-hidden="true"></span>
+
+  <div class="container image-banner__container">
+    {%- comment -%}
+      No .reveal on anything in here. global.js writes an inline transitionDelay
+      onto every revealed element, which a stylesheet cannot outrank without
+      !important, so the six-beat entrance owns its own timing in CSS instead.
+      More importantly base.css parks .reveal at opacity 0 until the observer
+      fires — and Chrome refuses text at opacity 0 as an LCP candidate, so the
+      <h1> would have been paying for the animation with its LCP.
+    {%- endcomment -%}
+    <div class="image-banner__content">
+      {%- if section.settings.eyebrow != blank -%}
+        <p class="image-banner__eyebrow hero-in">{{ section.settings.eyebrow | escape }}</p>
+      {%- endif -%}
+
+      {%- if section.settings.heading != blank -%}
+        <h1 class="image-banner__heading">{{ section.settings.heading | escape }}</h1>
+      {%- endif -%}
+
+      {%- if section.settings.subheading != blank -%}
+        <p class="image-banner__subheading hero-in">{{ section.settings.subheading | escape }}</p>
+      {%- endif -%}
+
+      {%- if section.settings.show_search -%}
+        <div class="image-banner__search-wrap hero-in">
+          <form action="{{ routes.search_url }}" method="get" role="search" class="image-banner__search">
+            <label for="HeroSearchInput-{{ section.id }}" class="visually-hidden">
+              {{- 'general.search.title' | t -}}
+            </label>
+            <div class="image-banner__search-box">
+              <input
+                id="HeroSearchInput-{{ section.id }}"
+                class="image-banner__search-input"
+                type="search"
+                name="q"
+                placeholder="{{ 'general.search.placeholder' | t | escape }}"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              >
+              <button
+                type="submit"
+                class="btn image-banner__search-submit"
+                aria-label="{{ 'general.search.submit' | t | escape }}"
+              >
+                {%- render 'icon', name: 'search', size: 20 -%}
+                <span class="image-banner__search-submit-text">{{ 'general.search.submit' | t }}</span>
+              </button>
+            </div>
+          </form>
+
+          {%- if popular_terms.size > 0 -%}
+            <div class="image-banner__popular">
+              <span class="image-banner__popular-label">{{ 'general.search.popular' | t }}</span>
+              <ul class="image-banner__popular-list" role="list">
+                {%- for term in popular_terms limit: 6 -%}
+                  {%- assign term_clean = term | strip -%}
+                  {%- if term_clean != blank -%}
+                    <li>
+                      <a class="chip" href="{{ routes.search_url }}?q={{ term_clean | url_param_escape }}">
+                        {{- term_clean -}}
+                      </a>
+                    </li>
+                  {%- endif -%}
+                {%- endfor -%}
+              </ul>
+            </div>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- if section.settings.button_1_label != blank or section.settings.button_2_label != blank -%}
+        <div class="image-banner__actions hero-in">
+          {%- if section.settings.button_1_label != blank -%}
+            <a
+              href="{{ section.settings.button_1_link | default: routes.all_products_collection_url }}"
+              class="btn btn--lg image-banner__action"
+            >
+              {{- section.settings.button_1_label | escape -}}
+            </a>
+          {%- endif -%}
+          {%- if section.settings.button_2_label != blank and button_2_link != blank -%}
+            <a href="{{ button_2_link }}" class="btn btn--outline-light btn--lg image-banner__action">
+              {%- if button_2_is_phone -%}
+                {%- render 'icon', name: 'phone', size: 19 -%}
+              {%- endif -%}
+              {{- section.settings.button_2_label | escape -}}
+            </a>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- if section.settings.show_chips and has_chips -%}
+        <ul class="image-banner__trust hero-in" role="list">
+          {%- for chip in trust_chips -%}
+            {%- assign chip_clean = chip | strip -%}
+            {%- if chip_clean != blank -%}
+              <li class="image-banner__trust-item">
+                {%- render 'icon', name: 'check-circle', size: 17 -%}
+                <span>{{ chip_clean | escape }}</span>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+    </div>
+  </div>
+
+  {%- if show_stage -%}
+    <span class="image-banner__edge blueprint-rule" aria-hidden="true"></span>
+  {%- endif -%}
+</section>
+
+{%- if show_stage and motion != 'off' -%}
+  <script>
+    (function () {
+      var stage = document.getElementById('ImageBanner-{{ section.id }}');
+      if (!stage) return;
+      var calm = window.matchMedia('(prefers-reduced-motion: no-preference)');
+
+      /* Pointer parallax, desktop only. The near grid moves WITH the pointer and
+         the drawing moves AGAINST it; the difference in direction, not the
+         distance, is what the eye reads as depth. It writes the independent
+         `translate` property and never `transform`, so it composes with the
+         keyframed drift instead of replacing it — switch it to `transform` and
+         the grid stops moving. Two property writes per frame, rAF-coalesced. */
+      var targets = stage.querySelectorAll('[data-hero-parallax]');
+      var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+      if (targets.length && fine.matches && calm.matches) {
+        var frame = 0;
+        var px = 0;
+        var py = 0;
+        var apply = function () {
+          frame = 0;
+          for (var i = 0; i < targets.length; i++) {
+            var depth = parseFloat(targets[i].getAttribute('data-hero-parallax')) || 1;
+            targets[i].style.setProperty('--hero-px', (px * depth).toFixed(2) + 'px');
+            targets[i].style.setProperty('--hero-py', (py * depth).toFixed(2) + 'px');
+          }
+        };
+        stage.addEventListener('pointermove', function (event) {
+          var rect = stage.getBoundingClientRect();
+          px = ((event.clientX - rect.left) / rect.width - 0.5) * 28;
+          py = ((event.clientY - rect.top) / rect.height - 0.5) * 18;
+          if (!frame) frame = requestAnimationFrame(apply);
+        }, { passive: true });
+        stage.addEventListener('pointerleave', function () {
+          px = 0;
+          py = 0;
+          if (!frame) frame = requestAnimationFrame(apply);
+        }, { passive: true });
+      }
+
+      /* Optional merchant video. .is-playing is the only thing that reveals it,
+         so a blocked, failed or data-saver-suppressed video leaves the poster on
+         screen rather than a black frame or a flash. */
+      var shell = stage.querySelector('[data-hero-video]');
+      var video = shell ? shell.querySelector('video') : null;
+      var large = video ? video.getAttribute('data-src-lg') : '';
+      if (video && large && calm.matches) {
+        var link = navigator.connection || {};
+        var slow = link.effectiveType === '2g' || link.effectiveType === 'slow-2g';
+        var play = function () {
+          var attempt = video.play();
+          /* A rejected play() is normal — low power mode, a background tab — and
+             must stay silent, because the poster is already a correct result. */
+          if (attempt && attempt.catch) attempt.catch(function () {});
+        };
+        /* Deliberately on `load`, not here: this script is inline in the body, so
+           starting the video now would put it in the same network queue as the
+           poster, which is the LCP candidate. Waiting costs a second of stillness
+           and buys a clean LCP. */
+        if (link.saveData !== true && !slow) {
+          window.addEventListener('load', function () {
+            var small = video.getAttribute('data-src-sm');
+            video.src = window.innerWidth < 750 && small ? small : large;
+            video.addEventListener('playing', function () {
+              shell.classList.add('is-playing');
+            }, { once: true });
+            video.load();
+            play();
+            /* A loop still decoding off-screen is a battery bug, not a feature. */
+            if ('IntersectionObserver' in window) {
+              new IntersectionObserver(function (entries) {
+                if (entries[0].isIntersecting) {
+                  play();
+                } else {
+                  video.pause();
+                }
+              }, { threshold: 0.05 }).observe(shell);
+            }
+          }, { once: true });
+        }
+      }
+    })();
+  </script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "באנר ראשי",
+  "settings": [
+    {
+      "type": "header",
+      "content": "תמונה"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "תמונת רקע",
+      "info": "מומלץ 2400×1200 ומעלה. ללא תמונה יוצג רקע כחול-כהה ממותג עם במת תנועה: שתי שכבות מרשתת שרטוט, קרן אור, ופרט קונסטרוקציה שמשרטט את עצמו."
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image",
+      "label": "תמונה למובייל",
+      "info": "אופציונלי. אם לא נבחרה - תוצג תמונת הרקע הראשית."
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "קטגוריה למשיכת תמונה",
+      "info": "אופציונלי. אם לא נבחרה תמונת רקע - תשמש תמונת הקטגוריה הזו."
+    },
+    {
+      "type": "select",
+      "id": "height",
+      "label": "גובה הבאנר",
+      "options": [
+        { "value": "small", "label": "נמוך" },
+        { "value": "medium", "label": "בינוני" },
+        { "value": "large", "label": "גבוה" },
+        { "value": "full", "label": "מסך מלא" }
+      ],
+      "default": "large"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "כהות שכבת ההצללה",
+      "info": "מגבירה את הניגודיות של הטקסט מעל התמונה או הסרטון. אין להוריד מתחת ל-45% כשיש תמונה או סרטון בהירים - מתחת לזה חותמות האמון יורדות מתקן הנגישות AA.",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "%",
+      "default": 55
+    },
+    {
+      "type": "header",
+      "content": "תנועה ורקע חי"
+    },
+    {
+      "type": "select",
+      "id": "motion_intensity",
+      "label": "עוצמת התנועה",
+      "info": "\"מלא\" - שתי שכבות מרשתת נעות, קרן אור עם נסורת, ופרט קונסטרוקציה שמשרטט את עצמו. \"עדין\" - אותה במה בקצב חצי, בלי נסורת. \"כבוי\" - רקע סטטי לגמרי. בכל מקרה, מבקר שהגדיר במערכת ההפעלה שלו \"הפחתת תנועה\" יקבל רקע סטטי.",
+      "options": [
+        { "value": "off", "label": "כבוי" },
+        { "value": "subtle", "label": "עדין" },
+        { "value": "full", "label": "מלא" }
+      ],
+      "default": "full"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_detail_drawing",
+      "label": "הצגת שרטוט הפרט הטכני",
+      "info": "פרט של קיר קורות עם ברס אלכסוני וקו-מידה, בפינה של הבאנר. זו החתימה הוויזואלית של האתר.",
+      "default": true
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "סרטון רקע",
+      "info": "אופציונלי, וכבוי כברירת מחדל. מומלץ 1920×1080, 6-8 שניות, לופ חלק, בלי טקסט ובלי חיתוכים - לופ יפה של 8 שניות עובד טוב יותר מ-30 שניות של רחפן. הסרטון לא נטען בכלל במצב חיסכון בנתונים, ברשת איטית, או כשהמבקר ביקש הפחתת תנועה. הבמה המקודדת נשארת מעליו בעוצמה מופחתת."
+    },
+    {
+      "type": "image_picker",
+      "id": "video_poster",
+      "label": "תמונת פוסטר לסרטון",
+      "info": "מה שנראה עד שהסרטון מתחיל לנגן, וגם מה שנמדד כתמונה הראשית של הדף - ולכן היא זו שצריכה להיות איכותית. אם לא נבחרה, תשמש תמונת הרקע ואחריה התמונה שהסרטון מייצר."
+    },
+    {
+      "type": "header",
+      "content": "תוכן"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "שורת פתיחה קטנה",
+      "default": "מאז 1990 · קיבוץ קרית ענבים"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת ראשית",
+      "default": "חומרי בניין, כלי עבודה ואספקה טכנית - הכל במקום אחד"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "כותרת משנה",
+      "default": "יותר מ-30 שנה שאנשי מקצוע, קבלנים ובעלי בתים סומכים עלינו. אלפי מוצרים במלאי, מהמותגים המובילים בעולם, עם ייעוץ של צוות שמכיר את השטח."
+    },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "יישור התוכן",
+      "options": [
+        { "value": "start", "label": "לצד ההתחלה" },
+        { "value": "center", "label": "מרכז" }
+      ],
+      "default": "start"
+    },
+    {
+      "type": "header",
+      "content": "חיפוש"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_search",
+      "label": "הצגת שדה חיפוש גדול",
+      "info": "החיפוש הוא הדרך המהירה ביותר להתמצא בקטלוג. מתחתיו יוצגו החיפושים הפופולריים מהגדרות ערכת העיצוב.",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "כפתורים"
+    },
+    {
+      "type": "text",
+      "id": "button_1_label",
+      "label": "כפתור ראשי - טקסט",
+      "default": "לקטלוג המלא"
+    },
+    {
+      "type": "url",
+      "id": "button_1_link",
+      "label": "כפתור ראשי - קישור",
+      "default": "/collections/all"
+    },
+    {
+      "type": "text",
+      "id": "button_2_label",
+      "label": "כפתור משני - טקסט",
+      "default": "דברו איתנו"
+    },
+    {
+      "type": "url",
+      "id": "button_2_link",
+      "label": "כפתור משני - קישור",
+      "info": "אם נשאר ריק - הכפתור יקשר לטלפון החנות מהגדרות ערכת העיצוב."
+    },
+    {
+      "type": "header",
+      "content": "חותמות אמון"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_chips",
+      "label": "הצגת שורת חותמות אמון",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "chip_1",
+      "label": "חותמת 1",
+      "default": "30+ שנות ניסיון בענף"
+    },
+    {
+      "type": "text",
+      "id": "chip_2",
+      "label": "חותמת 2",
+      "default": "משלוחים לכל הארץ"
+    },
+    {
+      "type": "text",
+      "id": "chip_3",
+      "label": "חותמת 3",
+      "default": "ייעוץ מקצועי חינם"
+    }
+  ],
+  "presets": [
+    {
+      "name": "באנר ראשי"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,381 @@
+{%- comment -%}
+  Renders the faceted-filtering form. One DOM element serves both contexts:
+  - Mobile (<990px): a slide-in drawer (id="FacetsDrawer", opened via [data-drawer-open="FacetsDrawer"]).
+  - Desktop (>=990px): section-collection.css neutralises the drawer styles so it
+    renders as a static, sticky sidebar.
+
+  Filter types follow Shopify's native contract:
+  - list       → checkbox rows with counts, collapsed past 10 options
+  - boolean    → a single switch bound to the filter's true value
+  - price_range→ two number inputs plus a track showing the selected window
+
+  Usage:
+    {% render 'facets',
+      results: collection,          — collection or search object (must expose .filters)
+      results_url: results_url,     — URL that clears all filters (keeps sort)
+      form_action: base_url,        — GET action for the no-JS fallback
+      sort_by: sort_by,             — current sort value
+      sort_hidden: sort_hidden,     — render sort_by as hidden input (when no sort select exists)
+      active_count: active_count    — number of currently-active filter values
+    %}
+{%- endcomment -%}
+{%- assign visible_limit = 10 -%}
+
+<div
+  id="FacetsDrawer"
+  class="drawer drawer--end facets-drawer"
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-label="{{ 'products.facets.filter_button' | t }}"
+>
+  <div class="drawer__header">
+    <h2 class="drawer__title">
+      {% render 'icon', name: 'filter', size: 20 %}
+      {{ 'products.facets.filter_button' | t }}
+      <span class="facets-count"{% if active_count == 0 %} hidden{% endif %}>{{ active_count }}</span>
+    </h2>
+    <button
+      type="button"
+      class="btn-icon"
+      data-drawer-close
+      aria-label="{{ 'general.accessibility.close' | t }}"
+    >
+      {% render 'icon', name: 'close', size: 22 %}
+    </button>
+  </div>
+
+  <div class="drawer__body">
+    {%- comment -%} Desktop-only sidebar heading (the drawer header is hidden there) {%- endcomment -%}
+    <div class="facets-title">
+      <span class="facets-title__label">
+        {% render 'icon', name: 'filter', size: 18 %}
+        {{ 'products.facets.filter_by_label' | t }}
+      </span>
+      {%- if active_count > 0 -%}
+        <a href="{{ results_url }}" class="link facets-title__clear" data-facets-clear>
+          {{ 'products.facets.clear_all' | t }}
+        </a>
+      {%- endif -%}
+    </div>
+
+    <form
+      id="FacetFiltersForm"
+      class="facets-form"
+      method="get"
+      action="{{ form_action }}"
+      data-facets-form
+    >
+      {%- if results.terms -%}
+        <input type="hidden" name="q" value="{{ results.terms | escape }}">
+      {%- endif -%}
+      {%- if sort_hidden and sort_by != blank -%}
+        <input type="hidden" name="sort_by" value="{{ sort_by | escape }}">
+      {%- endif -%}
+
+      {%- for filter in results.filters -%}
+        {%- liquid
+          assign facet_id = filter.param_name | handleize
+
+          comment
+            filter.label is Shopify's own string (Search & Discovery config, or
+            the product-data field name), so it never passes through this theme's
+            locale file and lands on the Hebrew storefront as "Availability",
+            "Price", "Product type". Same idiom as sections/footer.liquid: key off
+            the part Shopify keeps stable — the handleized label — substitute a
+            Hebrew string, and keep Shopify's label as the fallback so a filter
+            this theme has not enumerated, or one the merchant already named in
+            Hebrew, still renders. Locale keys here are snake_case, hence the
+            hyphen-to-underscore pass after handleize. A missing key makes `t`
+            return the literal "Translation missing: ...", which is worse than the
+            English it replaces — so every lookup is guarded on that text.
+
+            The two `when` arms below exist because products.facets.availability
+            and .price predate the map: they were written for exactly those two
+            Shopify facets and then never wired to anything. Consumed where they
+            already live rather than copied into the map, so each facet has one
+            Hebrew string and not two that can drift apart.
+          endcomment
+          assign label_handle = filter.label | handleize | replace: '-', '_'
+          assign facet_label_key = 'products.facets.filters.' | append: label_handle
+          assign facet_label = facet_label_key | t
+          if facet_label contains 'Translation missing'
+            case label_handle
+              when 'availability'
+                assign facet_label = 'products.facets.availability' | t
+              when 'price'
+                assign facet_label = 'products.facets.price' | t
+              else
+                assign facet_label = filter.label
+            endcase
+          endif
+
+          assign facet_open = false
+          if forloop.index <= 3
+            assign facet_open = true
+          endif
+          if filter.active_values.size > 0
+            assign facet_open = true
+          endif
+          if filter.type == 'price_range'
+            if filter.min_value.value != nil or filter.max_value.value != nil
+              assign facet_open = true
+            endif
+          endif
+        -%}
+
+        {%- if filter.type == 'boolean' -%}
+          {%- comment -%} A yes/no filter reads best as a switch, with no accordion. {%- endcomment -%}
+          {%- liquid
+            comment
+              A switch caption is an instruction, not a heading: Shopify labels the
+              availability boolean "In stock", which on a switch has to read "show
+              in-stock only" — which is precisely the never-wired
+              products.facets.in_stock_only string. Hence the '_only' suffix on the
+              handle: 'in_stock' resolves to that existing key, 'on_sale' to its new
+              sibling, and anything else falls back to the heading label above (still
+              Hebrew where the map knows it, Shopify's own label otherwise).
+            endcomment
+            assign switch_key = 'products.facets.' | append: label_handle | append: '_only'
+            assign switch_label = switch_key | t
+            if switch_label contains 'Translation missing'
+              assign switch_label = facet_label
+            endif
+          -%}
+          <div class="facet facet--switch" data-facet="{{ filter.param_name | escape }}">
+            <label class="facet-switch" for="Facet-{{ facet_id }}">
+              <input
+                type="checkbox"
+                class="facet-switch__input"
+                id="Facet-{{ facet_id }}"
+                name="{{ filter.true_value.param_name }}"
+                value="{{ filter.true_value.value | escape }}"
+                {% if filter.true_value.active %}checked{% endif %}
+              >
+              <span class="facet-switch__track" aria-hidden="true"></span>
+              <span class="facet-switch__text">{{ switch_label | escape }}</span>
+              <span class="facet__count" aria-hidden="true">{{ filter.true_value.count }}</span>
+            </label>
+          </div>
+        {%- else -%}
+          <details
+            class="facet"
+            data-facet="{{ filter.param_name | escape }}"
+            data-open-desktop
+            {% if facet_open %}open{% endif %}
+          >
+            <summary class="facet__summary">
+              <span class="facet__label">
+                {{ facet_label | escape }}
+                {%- if filter.active_values.size > 0 -%}
+                  <span class="facet__selected">
+                    {{- 'products.facets.selected' | t: count: filter.active_values.size -}}
+                  </span>
+                {%- endif -%}
+              </span>
+              {% render 'icon', name: 'chevron-down', size: 18, class: 'facet__chevron' %}
+            </summary>
+
+            <div class="facet__content">
+              {%- case filter.type -%}
+                {%- when 'price_range' -%}
+                  {%- liquid
+                    assign range_max = filter.range_max
+                    assign range_max_units = filter.range_max | money_without_currency | replace: ',', ''
+
+                    assign price_min = ''
+                    if filter.min_value.value != nil
+                      assign price_min = filter.min_value.value | money_without_currency | replace: ',', ''
+                    endif
+                    assign price_max = ''
+                    if filter.max_value.value != nil
+                      assign price_max = filter.max_value.value | money_without_currency | replace: ',', ''
+                    endif
+
+                    assign start_pct = 0
+                    assign end_pct = 100
+                    if range_max > 0
+                      if filter.min_value.value != nil
+                        assign start_pct = filter.min_value.value | times: 100.0 | divided_by: range_max | round: 2
+                      endif
+                      if filter.max_value.value != nil
+                        assign end_pct = filter.max_value.value | times: 100.0 | divided_by: range_max | round: 2
+                      endif
+                    endif
+                    assign span_pct = end_pct | minus: start_pct
+                    if span_pct < 0
+                      assign span_pct = 0
+                    endif
+
+                    assign highest_price = filter.range_max | money
+                  -%}
+                  <div class="facet-price">
+                    <div
+                      class="facet-price__track"
+                      aria-hidden="true"
+                      style="--range-start: {{ start_pct }}%; --range-span: {{ span_pct }}%;"
+                    >
+                      <span class="facet-price__span"></span>
+                    </div>
+
+                    <div class="facet-price__inputs">
+                      <div class="facet-price__field">
+                        <label class="visually-hidden" for="Facet-{{ facet_id }}-min">
+                          {{ 'products.facets.from' | t }} ({{ cart.currency.symbol }})
+                        </label>
+                        <span class="facet-price__currency" aria-hidden="true">{{ cart.currency.symbol }}</span>
+                        <input
+                          type="number"
+                          class="input facet-price__input"
+                          id="Facet-{{ facet_id }}-min"
+                          name="{{ filter.min_value.param_name }}"
+                          value="{{ price_min }}"
+                          placeholder="0"
+                          inputmode="decimal"
+                          min="0"
+                          max="{{ range_max_units }}"
+                          step="any"
+                          dir="ltr"
+                          data-price-input
+                        >
+                      </div>
+                      <span class="facet-price__sep" aria-hidden="true">&ndash;</span>
+                      <div class="facet-price__field">
+                        <label class="visually-hidden" for="Facet-{{ facet_id }}-max">
+                          {{ 'products.facets.to' | t }} ({{ cart.currency.symbol }})
+                        </label>
+                        <span class="facet-price__currency" aria-hidden="true">{{ cart.currency.symbol }}</span>
+                        <input
+                          type="number"
+                          class="input facet-price__input"
+                          id="Facet-{{ facet_id }}-max"
+                          name="{{ filter.max_value.param_name }}"
+                          value="{{ price_max }}"
+                          placeholder="{{ range_max_units }}"
+                          inputmode="decimal"
+                          min="0"
+                          max="{{ range_max_units }}"
+                          step="any"
+                          dir="ltr"
+                          data-price-input
+                        >
+                      </div>
+                    </div>
+
+                    <p class="facet__hint">
+                      {{ 'products.facets.highest_price' | t: price: highest_price }}
+                    </p>
+                  </div>
+
+                {%- else -%}
+                  {%- liquid
+                    assign expandable = false
+                    if filter.values.size > visible_limit
+                      assign expandable = true
+                    endif
+
+                    assign force_expanded = false
+                    if expandable
+                      for value in filter.values
+                        if forloop.index > visible_limit and value.active
+                          assign force_expanded = true
+                          break
+                        endif
+                      endfor
+                    endif
+                  -%}
+                  <ul
+                    id="FacetList-{{ facet_id }}"
+                    class="facet__values{% if expandable %} facet__values--expandable{% endif %}"
+                    role="list"
+                    data-facet-list
+                    data-facet-key="{{ filter.param_name | escape }}"
+                    data-facet-limit="{{ visible_limit }}"
+                    {% if force_expanded %}data-force-expanded{% endif %}
+                  >
+                    {%- for value in filter.values -%}
+                      {%- liquid
+                        assign value_disabled = false
+                        if value.count == 0 and value.active == false
+                          assign value_disabled = true
+                        endif
+                        assign value_id = 'Facet-' | append: facet_id | append: '-' | append: forloop.index
+
+                        comment
+                          Most facet values are merchant data (brands, colours the
+                          owner typed in Hebrew) and must pass through untouched —
+                          only Shopify's own generated values leak English, and the
+                          availability facet is the one that always does ("In stock" /
+                          "Out of stock"). The guarded lookup translates exactly those
+                          and leaves everything else as Shopify sent it. value.value,
+                          which drives the URL, is never touched.
+                        endcomment
+                        assign value_handle = value.label | handleize | replace: '-', '_'
+                        assign value_label_key = 'products.facets.values.' | append: value_handle
+                        assign value_label = value_label_key | t
+                        if value_label contains 'Translation missing'
+                          assign value_label = value.label
+                        endif
+                      -%}
+                      <li class="facet__row" data-facet-row>
+                        <label
+                          class="facet__value{% if value_disabled %} facet__value--disabled{% endif %}"
+                          for="{{ value_id }}"
+                        >
+                          <input
+                            type="checkbox"
+                            class="checkbox facet__checkbox"
+                            id="{{ value_id }}"
+                            name="{{ value.param_name }}"
+                            value="{{ value.value | escape }}"
+                            {% if value.active %}checked{% endif %}
+                            {% if value_disabled %}disabled aria-disabled="true"{% endif %}
+                          >
+                          <span class="facet__value-label">{{ value_label | escape }}</span>
+                          <span class="facet__count" aria-hidden="true">{{ value.count }}</span>
+                        </label>
+                      </li>
+                    {%- endfor -%}
+                  </ul>
+
+                  {%- if expandable -%}
+                    <button
+                      type="button"
+                      class="facet__more"
+                      data-facet-more
+                      aria-controls="FacetList-{{ facet_id }}"
+                      aria-expanded="false"
+                      hidden
+                    >
+                      <span data-more>{{ 'products.facets.show_more' | t }}</span>
+                      <span data-less hidden>{{ 'products.facets.show_less' | t }}</span>
+                      {% render 'icon', name: 'chevron-down', size: 15, class: 'facet__more-chevron' %}
+                    </button>
+                  {%- endif -%}
+              {%- endcase -%}
+            </div>
+          </details>
+        {%- endif -%}
+      {%- endfor -%}
+
+      <noscript>
+        <div class="facets-form__noscript">
+          <button type="submit" class="btn btn--secondary btn--sm btn--full">
+            {{ 'products.facets.apply' | t }}
+          </button>
+        </div>
+      </noscript>
+    </form>
+  </div>
+
+  <div class="drawer__footer">
+    <div class="facets-drawer__actions">
+      <a href="{{ results_url }}" class="btn btn--ghost" data-facets-clear>
+        {{ 'products.facets.clear_all' | t }}
+      </a>
+      <button type="submit" form="FacetFiltersForm" class="btn">
+        {{ 'products.facets.apply' | t }}
+      </button>
+    </div>
+  </div>
+</div>

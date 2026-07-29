@@ -1,0 +1,285 @@
+{{ 'section-customers.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%}
+  Account dashboard: order history on the left, the customer's own details and
+  the store's phone line on the right. Two columns on desktop, stacked cards on
+  phones. Status cells reuse .badge with local state modifiers.
+{%- endcomment -%}
+{%- liquid
+  assign customer_name = customer.first_name | default: customer.name
+  assign phone_href = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+
+  assign wa_raw = settings.store_whatsapp | strip
+  assign wa_href = ''
+  if wa_raw != blank
+    assign wa_scheme = wa_raw | slice: 0, 4
+    if wa_scheme == 'http'
+      assign wa_href = wa_raw
+    else
+      assign wa_digits = wa_raw | remove: '+' | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+      assign wa_href = 'https://wa.me/' | append: wa_digits
+    endif
+  endif
+-%}
+
+<section class="section account-section">
+  <div class="container">
+    {%- if settings.show_breadcrumbs -%}
+      <nav class="breadcrumbs account-crumbs" aria-label="{{ 'general.breadcrumbs.label' | t }}">
+        <a href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">
+          {% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}
+        </span>
+        <span class="breadcrumbs__current" aria-current="page">{{ 'customer.account.title' | t }}</span>
+      </nav>
+    {%- endif -%}
+
+    {%- paginate customer.orders by 10 -%}
+      <header class="account-header">
+        <div class="account-header__text">
+          <span class="text-eyebrow">{{ 'customer.account.title' | t }}</span>
+          <h1 class="account-header__title">{{ 'customer.account.welcome' | t: name: customer_name }}</h1>
+        </div>
+
+        <div class="account-header__actions">
+          <a class="btn btn--ghost btn--sm" href="{{ routes.all_products_collection_url }}">
+            {{ 'general.continue_shopping' | t }}
+          </a>
+          <a class="btn btn--outline btn--sm" href="{{ routes.account_logout_url }}">
+            {% render 'icon', name: 'log-out', size: 16, class: 'icon--dir' %}
+            {{ 'customer.account.log_out' | t }}
+          </a>
+        </div>
+      </header>
+
+      <div class="account-layout">
+        {%- # ---------- Order history ---------- -%}
+        <div class="account-main">
+          <div class="card orders-card">
+            <div class="orders-card__head">
+              {% render 'icon', name: 'package', size: 20 %}
+              <h2 class="orders-card__title">{{ 'customer.orders.title' | t }}</h2>
+              {%- if customer.orders_count > 0 -%}
+                <span class="badge badge--outline">{{ customer.orders_count }}</span>
+              {%- endif -%}
+            </div>
+
+            {%- if customer.orders.size > 0 -%}
+              <div class="table-wrap">
+                <table class="table table--stack orders-table">
+                  <caption class="visually-hidden">{{ 'customer.orders.title' | t }}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">{{ 'customer.orders.order_number' | t }}</th>
+                      <th scope="col">{{ 'customer.orders.date' | t }}</th>
+                      <th scope="col">{{ 'customer.orders.payment_status' | t }}</th>
+                      <th scope="col">{{ 'customer.orders.fulfillment_status' | t }}</th>
+                      <th scope="col">{{ 'customer.orders.total' | t }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {%- for order in customer.orders -%}
+                      {%- liquid
+                        case order.financial_status
+                          when 'paid', 'partially_refunded'
+                            assign fin_class = 'order-status--ok'
+                          when 'pending', 'authorized', 'partially_paid'
+                            assign fin_class = 'order-status--wait'
+                          when 'refunded', 'voided'
+                            assign fin_class = 'order-status--off'
+                          else
+                            assign fin_class = ''
+                        endcase
+
+                        case order.fulfillment_status
+                          when 'fulfilled'
+                            assign ful_class = 'order-status--ok'
+                          when 'partial'
+                            assign ful_class = 'order-status--wait'
+                          else
+                            assign ful_class = ''
+                        endcase
+
+                        comment
+                          order.*_status_label are Shopify platform strings ("Paid",
+                          "Unfulfilled") that never pass through this theme's locale
+                          file, so the badges were the only English left in the
+                          account area. The cases above already prove the stable
+                          handle is in hand; look the Hebrew up off that handle the
+                          way sections/footer.liquid does, keeping Shopify's label as
+                          the fallback for a status this theme has not enumerated.
+                          Looked up dynamically rather than inside the case arms so
+                          statuses that carry no badge colour (scheduled, on_hold,
+                          restocked, expired) are still translated.
+                          Liquid leaves fulfillment_status empty until something
+                          ships, while Shopify's label already says "Unfulfilled" —
+                          so an empty handle is normalised rather than left to fall
+                          through to that English.
+                        endcomment
+                        assign fin_key = 'customer.order.statuses.financial.' | append: order.financial_status
+                        assign fin_label = fin_key | t
+                        if fin_label contains 'Translation missing'
+                          assign fin_label = order.financial_status_label
+                        endif
+
+                        assign ful_handle = order.fulfillment_status | default: 'unfulfilled'
+                        assign ful_key = 'customer.order.statuses.fulfillment.' | append: ful_handle
+                        assign ful_label = ful_key | t
+                        if ful_label contains 'Translation missing'
+                          assign ful_label = order.fulfillment_status_label
+                        endif
+                      -%}
+                      <tr>
+                        <td data-label="{{ 'customer.orders.order_number' | t }}">
+                          <a
+                            class="orders-table__link"
+                            href="{{ order.customer_url }}"
+                            aria-label="{{ 'customer.orders.order_number_link' | t: number: order.name }}"
+                          >{{ order.name }}</a>
+                        </td>
+                        <td data-label="{{ 'customer.orders.date' | t }}" class="orders-table__date">
+                          <time datetime="{{ order.created_at | date: '%Y-%m-%d' }}">
+                            {{- order.created_at | date: '%d.%m.%Y' -}}
+                          </time>
+                        </td>
+                        <td data-label="{{ 'customer.orders.payment_status' | t }}">
+                          <span class="badge order-status {{ fin_class }}">{{ fin_label | escape }}</span>
+                        </td>
+                        <td data-label="{{ 'customer.orders.fulfillment_status' | t }}">
+                          <span class="badge order-status {{ ful_class }}">{{ ful_label | escape }}</span>
+                        </td>
+                        <td data-label="{{ 'customer.orders.total' | t }}" class="orders-table__total">
+                          {{ order.total_price | money }}
+                        </td>
+                      </tr>
+                    {%- endfor -%}
+                  </tbody>
+                </table>
+              </div>
+            {%- else -%}
+              <div class="empty-state orders-card__empty">
+                {% render 'icon', name: 'package', size: 44 %}
+                <h3 class="empty-state__title h4">{{ 'customer.orders.none' | t }}</h3>
+                <a class="btn" href="{{ routes.all_products_collection_url }}">
+                  {{ 'general.continue_shopping' | t }}
+                  {% render 'icon', name: 'arrow-right', size: 16, class: 'icon--dir' %}
+                </a>
+              </div>
+            {%- endif -%}
+          </div>
+
+          {% render 'pagination', paginate: paginate %}
+        </div>
+
+        {%- # ---------- Side column ---------- -%}
+        <aside class="account-side">
+          <div class="panel account-panel">
+            <h2 class="account-panel__title">
+              {% render 'icon', name: 'user', size: 19 %}
+              {{ 'customer.account.details' | t }}
+            </h2>
+
+            <dl class="account-dl">
+              <div class="account-dl__row">
+                <dt class="account-dl__label">{{ 'general.contact.name' | t }}</dt>
+                <dd class="account-dl__value">{{ customer.name }}</dd>
+              </div>
+              <div class="account-dl__row">
+                <dt class="account-dl__label">{{ 'customer.login_page.email' | t }}</dt>
+                <dd class="account-dl__value account-dl__value--ltr">{{ customer.email }}</dd>
+              </div>
+              {%- if customer.phone != blank -%}
+                <div class="account-dl__row">
+                  <dt class="account-dl__label">{{ 'general.contact.phone' | t }}</dt>
+                  <dd class="account-dl__value account-dl__value--ltr">{{ customer.phone }}</dd>
+                </div>
+              {%- endif -%}
+            </dl>
+          </div>
+
+          <div class="panel account-panel">
+            <h2 class="account-panel__title">
+              {% render 'icon', name: 'map-pin', size: 19 %}
+              {{ 'customer.addresses.title' | t }}
+            </h2>
+
+            {%- if customer.default_address -%}
+              <address class="account-address">{{ customer.default_address | format_address }}</address>
+            {%- else -%}
+              <p class="account-help__text">{{ 'customer.addresses.none' | t }}</p>
+            {%- endif -%}
+
+            <a class="btn btn--outline btn--full account-panel__cta" href="{{ routes.account_addresses_url }}">
+              {{ 'customer.account.view_addresses' | t }} ({{ customer.addresses_count }})
+            </a>
+          </div>
+
+          {%- if section.settings.show_help -%}
+            <div class="panel account-panel">
+              <h2 class="account-panel__title">
+                {% render 'icon', name: 'headset', size: 19 %}
+                {{ section.settings.help_title | escape }}
+              </h2>
+
+              {%- if section.settings.help_text != blank -%}
+                <p class="account-help__text">{{ section.settings.help_text | escape }}</p>
+              {%- endif -%}
+
+              <div class="account-help__actions">
+                {%- if settings.store_phone != blank -%}
+                  <a class="btn btn--secondary btn--sm" href="tel:{{ phone_href }}">
+                    {% render 'icon', name: 'phone', size: 16 %}
+                    <span class="account-help__ltr">{{ settings.store_phone }}</span>
+                  </a>
+                {%- endif -%}
+                {%- if wa_href != blank -%}
+                  <a
+                    class="btn btn--ghost btn--sm"
+                    href="{{ wa_href }}"
+                    target="_blank"
+                    rel="noopener"
+                    aria-describedby="a11y-new-window-message"
+                  >
+                    {% render 'icon', name: 'whatsapp', size: 16 %}
+                    {{ 'general.contact.whatsapp_cta' | t }}
+                  </a>
+                {%- endif -%}
+              </div>
+            </div>
+          {%- endif -%}
+        </aside>
+      </div>
+    {%- endpaginate -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "האזור האישי",
+  "settings": [
+    {
+      "type": "header",
+      "content": "כרטיס עזרה",
+      "info": "הטלפון והוואטסאפ נלקחים מהגדרות התבנית."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_help",
+      "label": "הצגת כרטיס \"צריכים עזרה\"",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "help_title",
+      "label": "כותרת הכרטיס",
+      "default": "צריכים עזרה בהזמנה?"
+    },
+    {
+      "type": "textarea",
+      "id": "help_text",
+      "label": "טקסט",
+      "default": "שאלה על מלאי, מועד אספקה או החזרה? צוות החנות בקיבוץ קרית ענבים כאן בשבילכם."
+    }
+  ]
+}
+{% endschema %}

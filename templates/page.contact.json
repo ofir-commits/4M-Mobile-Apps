@@ -1,0 +1,58 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-contact",
+      "settings": {}
+    },
+    "trust": {
+      "type": "services-bar",
+      "settings": {
+        "alt_background": true
+      },
+      "blocks": {
+        "s1": {
+          "type": "service",
+          "settings": {
+            "icon": "truck",
+            "title": "משלוחים לכל הארץ",
+            "text": "אספקה עד האתר, העסק או הבית"
+          }
+        },
+        "s2": {
+          "type": "service",
+          "settings": {
+            "icon": "store",
+            "title": "איסוף עצמי מהחנות",
+            "text": "ההזמנה מחכה לכם בקרית ענבים"
+          }
+        },
+        "s3": {
+          "type": "service",
+          "settings": {
+            "icon": "shield-check",
+            "title": "מותגים מקוריים בלבד",
+            "text": "אחריות מלאה מיבואן רשמי"
+          }
+        },
+        "s4": {
+          "type": "service",
+          "settings": {
+            "icon": "headset",
+            "title": "ייעוץ מקצועי",
+            "text": "02-534-3422 · 30+ שנות ניסיון"
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ]
+    }
+  },
+  "order": [
+    "main",
+    "trust"
+  ]
+}

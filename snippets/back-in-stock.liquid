@@ -1,0 +1,103 @@
+{%- comment -%}
+  "Notify me when it's back" — captures demand on sold-out variants instead of
+  losing the visit. Uses Shopify's built-in contact form, so it needs no app:
+  the request lands in the shop's inbox with the product, variant and SKU.
+
+  Usage (product page, inside the buy column):
+    {% render 'back-in-stock', product: product, variant: current_variant %}
+
+  Renders nothing when the variant is purchasable.
+{%- endcomment -%}
+
+{%- liquid
+  assign target = variant | default: product.selected_or_first_available_variant
+  assign show = false
+  if product != blank and target != blank and target.available == false
+    assign show = true
+  endif
+-%}
+
+{%- if show -%}
+  {%- assign form_id = 'BackInStock-' | append: target.id -%}
+  <div class="back-in-stock" data-back-in-stock>
+    <div class="back-in-stock__head">
+      {% render 'icon', name: 'alert', size: 20 %}
+      <div>
+        <p class="back-in-stock__title">{{ 'products.product.sold_out' | t }}</p>
+        <p class="back-in-stock__text text-meta">
+          נשלח לכם הודעה ברגע שהמוצר חוזר למלאי - בלי התחייבות.
+        </p>
+      </div>
+    </div>
+
+    {%- form 'contact', id: form_id, class: 'back-in-stock__form' -%}
+      {%- if form.posted_successfully? -%}
+        <p class="form__success" role="status">
+          {% render 'icon', name: 'check-circle', size: 18 %}
+          תודה! נעדכן אתכם במייל ברגע שהמוצר חוזר למלאי.
+        </p>
+      {%- else -%}
+        {%- if form.errors -%}
+          <div class="errors" role="alert">
+            {{ form.errors | default_errors }}
+          </div>
+        {%- endif -%}
+
+        <input type="hidden" name="contact[נושא]" value="בקשת עדכון חזרה למלאי">
+        <input type="hidden" name="contact[מוצר]" value="{{ product.title | escape }}">
+        {%- if target.title != 'Default Title' -%}
+          <input type="hidden" name="contact[וריאנט]" value="{{ target.title | escape }}">
+        {%- endif -%}
+        {%- if target.sku != blank -%}
+          <input type="hidden" name="contact[מקט]" value="{{ target.sku | escape }}">
+        {%- endif -%}
+        <input type="hidden" name="contact[קישור]" value="{{ shop.url }}{{ product.url }}?variant={{ target.id }}">
+
+        <div class="back-in-stock__row">
+          <label class="visually-hidden" for="{{ form_id }}-email">כתובת אימייל</label>
+          <input
+            id="{{ form_id }}-email"
+            class="field__input"
+            type="email"
+            name="contact[email]"
+            value="{{ form.email | default: customer.email }}"
+            placeholder="האימייל שלכם"
+            autocomplete="email"
+            required
+          >
+          <button type="submit" class="btn btn--secondary">
+            {% render 'icon', name: 'mail', size: 17 %}
+            עדכנו אותי
+          </button>
+        </div>
+
+        {%- if settings.store_whatsapp != blank -%}
+          {%- liquid
+            assign wa = settings.store_whatsapp
+            unless wa contains 'http'
+              assign wa_digits = wa | remove: '+' | remove: '-' | remove: ' '
+              assign wa = 'https://wa.me/' | append: wa_digits
+            endunless
+            assign wa_message = 'שלום, אני מחפש את המוצר: ' | append: product.title
+            if target.sku != blank
+              assign wa_message = wa_message | append: ' (מקט ' | append: target.sku | append: ')'
+            endif
+            assign wa_message = wa_message | append: ' - יש במחסן?'
+            if wa contains '?'
+              assign wa_link = wa
+            else
+              assign wa_link = wa | append: '?text=' | append: wa_message | url_encode
+            endif
+          -%}
+          <p class="back-in-stock__alt text-meta">
+            צריכים את זה עכשיו?
+            <a class="link" href="{{ wa_link }}" target="_blank" rel="noopener">בדקו איתנו במחסן בוואטסאפ</a>
+            {%- if settings.store_phone != blank -%}
+              או בטלפון <a class="link" dir="ltr" href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}">{{ settings.store_phone }}</a>
+            {%- endif -%}
+          </p>
+        {%- endif -%}
+      {%- endif -%}
+    {%- endform -%}
+  </div>
+{%- endif -%}

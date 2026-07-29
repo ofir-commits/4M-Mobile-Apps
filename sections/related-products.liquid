@@ -1,0 +1,172 @@
+{{ 'section-main-product.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign heading = section.settings.heading
+  if heading == blank
+    assign heading = 'sections.related_products.heading' | t
+  endif
+  assign limit = section.settings.products_to_show | default: 4
+  assign intent = section.settings.recommendation_intent | default: 'related'
+-%}
+
+<related-products
+  class="related-products section section--alt"
+  data-url="{{ routes.product_recommendations_url }}?section_id={{ section.id }}&product_id={{ product.id }}&limit={{ limit }}&intent={{ intent }}"
+>
+  {%- if recommendations.performed -%}
+    {%- if recommendations.products_count > 0 -%}
+      <div class="container">
+        <div class="section-header">
+          <div class="section-header__text">
+            {%- if section.settings.eyebrow != blank -%}
+              <span class="section-header__eyebrow">{{ section.settings.eyebrow | escape }}</span>
+            {%- endif -%}
+            <h2 class="h2 section-header__heading">{{ heading | escape }}</h2>
+          </div>
+        </div>
+
+        <div class="related-products__row scroll-row">
+          {%- for rec_product in recommendations.products -%}
+            {% render 'product-card', product: rec_product, lazy: true %}
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- endif -%}
+  {%- else -%}
+    {%- comment -%}
+      First render. With JS the skeleton holds the space until the Section
+      Rendering API answers; without JS the <noscript> block below serves a real,
+      useful rail from the product's own collection instead of an empty hole.
+    {%- endcomment -%}
+    <div class="container">
+      <div class="section-header">
+        <div class="section-header__text">
+          {%- if section.settings.eyebrow != blank -%}
+            <span class="section-header__eyebrow">{{ section.settings.eyebrow | escape }}</span>
+          {%- endif -%}
+          <h2 class="h2 section-header__heading">{{ heading | escape }}</h2>
+        </div>
+      </div>
+
+      <div class="related-products__row scroll-row" aria-hidden="true">
+        {%- for i in (1..limit) -%}
+          <div class="related-skeleton">
+            <div class="skeleton related-skeleton__media"></div>
+            <div class="skeleton related-skeleton__line"></div>
+            <div class="skeleton related-skeleton__line related-skeleton__line--short"></div>
+          </div>
+        {%- endfor -%}
+      </div>
+
+      <noscript>
+        {%- liquid
+          assign fallback_collection = product.collections.first
+          assign fallback_count = 0
+        -%}
+        {%- if fallback_collection != blank -%}
+          <div class="related-products__row scroll-row">
+            {%- for fallback_product in fallback_collection.products limit: 12 -%}
+              {%- if fallback_product.id != product.id -%}
+                {% render 'product-card', product: fallback_product, lazy: true %}
+                {%- assign fallback_count = fallback_count | plus: 1 -%}
+                {%- if fallback_count >= limit -%}{%- break -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+      </noscript>
+    </div>
+  {%- endif -%}
+</related-products>
+
+<script>
+  (function () {
+    if (customElements.get('related-products')) return;
+    customElements.define(
+      'related-products',
+      class RelatedProducts extends HTMLElement {
+        connectedCallback() {
+          const url = this.dataset.url;
+          if (!url || this.dataset.loaded) return;
+
+          const load = () => {
+            this.dataset.loaded = 'true';
+            fetch(url)
+              .then((res) => res.text())
+              .then((text) => {
+                const doc = new DOMParser().parseFromString(text, 'text/html');
+                const fresh = doc.querySelector('related-products');
+                if (fresh && fresh.querySelector('.product-card')) {
+                  this.innerHTML = fresh.innerHTML;
+                  this.classList.add('is-loaded');
+                } else {
+                  this.hidden = true;
+                }
+              })
+              .catch(() => {
+                this.hidden = true;
+              });
+          };
+
+          if ('IntersectionObserver' in window) {
+            new IntersectionObserver(
+              (entries, observer) => {
+                if (!entries[0].isIntersecting) return;
+                observer.disconnect();
+                load();
+              },
+              { rootMargin: '0px 0px 400px 0px' }
+            ).observe(this);
+          } else {
+            load();
+          }
+        }
+      }
+    );
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "מוצרים דומים",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "שורת פתיחה קטנה",
+      "default": "משלימים את הפרויקט"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "אולי יעניין אתכם גם"
+    },
+    {
+      "type": "select",
+      "id": "recommendation_intent",
+      "label": "סוג ההמלצה",
+      "options": [
+        {
+          "value": "related",
+          "label": "מוצרים דומים"
+        },
+        {
+          "value": "complementary",
+          "label": "מוצרים משלימים"
+        }
+      ],
+      "default": "related"
+    },
+    {
+      "type": "range",
+      "id": "products_to_show",
+      "label": "מספר מוצרים להצגה",
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "default": 4
+    }
+  ]
+}
+{% endschema %}

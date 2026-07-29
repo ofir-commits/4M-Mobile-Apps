@@ -1,0 +1,56 @@
+{
+  "sections": {
+    "quick_order": {
+      "type": "quick-order",
+      "settings": {
+        "eyebrow": "לאנשי מקצוע וקבלנים",
+        "heading": "הזמנה מהירה לפי מקט",
+        "subheading": "יש לכם רשימת מקטים? הקלידו או הדביקו אותה כאן, ואנחנו נמלא את העגלה בשבילכם - בלי לחפש מוצר-מוצר.",
+        "alt_background": false,
+        "show_help": true
+      }
+    },
+    "services": {
+      "type": "services-bar",
+      "settings": {
+        "alt_background": true
+      },
+      "blocks": {
+        "s1": {
+          "type": "service",
+          "settings": {
+            "icon": "truck",
+            "title": "משלוחים לכל הארץ",
+            "text": "אספקה עד האתר, העסק או הבית"
+          }
+        },
+        "s2": {
+          "type": "service",
+          "settings": {
+            "icon": "store",
+            "title": "איסוף עצמי מהחנות",
+            "text": "ההזמנה מחכה לכם בקרית ענבים"
+          }
+        },
+        "s3": {
+          "type": "service",
+          "settings": {
+            "icon": "headset",
+            "title": "ייעוץ מקצועי",
+            "text": "צוות עם 30+ שנות ניסיון בענף"
+          }
+        },
+        "s4": {
+          "type": "service",
+          "settings": {
+            "icon": "percent",
+            "title": "תנאים לעסקים",
+            "text": "מחירי קבלן להזמנות בכמויות"
+          }
+        }
+      },
+      "block_order": ["s1", "s2", "s3", "s4"]
+    }
+  },
+  "order": ["quick_order", "services"]
+}

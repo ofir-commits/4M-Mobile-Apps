@@ -1,0 +1,134 @@
+{{ 'section-brand-logos.css' | asset_url | stylesheet_tag }}
+
+<section
+  id="BrandLogos-{{ section.id }}"
+  class="section brand-logos{% if section.settings.alt_background %} section--alt{% endif %}"
+>
+  <div class="container">
+    {%- if section.settings.heading != blank -%}
+      <div class="brand-logos__header">
+        <h2 class="brand-logos__heading h3">{{ section.settings.heading | escape }}</h2>
+      </div>
+    {%- endif -%}
+
+    {%- if section.blocks.size > 0 -%}
+      <ul class="brand-logos__grid" role="list">
+        {%- for block in section.blocks -%}
+          {%- liquid
+            assign brand_collection = block.settings.collection
+            assign brand_logo = block.settings.logo
+
+            if brand_logo == blank and brand_collection != blank
+              assign brand_logo = brand_collection.image
+            endif
+
+            assign brand_name = block.settings.name
+            if brand_name == blank and brand_collection != blank
+              assign brand_name = brand_collection.title
+            endif
+            if brand_name == blank
+              assign brand_name = 'sections.brand_logos.default_brand_name' | t
+            endif
+
+            assign brand_link = block.settings.link
+            if brand_link == blank and brand_collection != blank
+              assign brand_link = brand_collection.url
+            endif
+          -%}
+
+          {%- capture brand_inner -%}
+            {%- if brand_logo != blank -%}
+              <img
+                src="{{ brand_logo | image_url: width: 320 }}"
+                srcset="{{ brand_logo | image_url: width: 160 }} 160w,
+                        {{ brand_logo | image_url: width: 240 }} 240w,
+                        {{ brand_logo | image_url: width: 320 }} 320w"
+                sizes="(min-width: 990px) 160px, 28vw"
+                width="{{ brand_logo.width }}"
+                height="{{ brand_logo.height }}"
+                alt="{{ brand_name | escape }}"
+                loading="lazy"
+                decoding="async"
+              >
+            {%- else -%}
+              <span class="brand-tile__name">{{ brand_name | escape }}</span>
+            {%- endif -%}
+          {%- endcapture -%}
+
+          <li class="brand-logos__item reveal" {{ block.shopify_attributes }}>
+            {%- if brand_link != blank -%}
+              <a class="brand-tile" href="{{ brand_link }}">{{ brand_inner }}</a>
+            {%- else -%}
+              <div class="brand-tile brand-logos__tile--static">{{ brand_inner }}</div>
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "רצועת מותגים",
+  "max_blocks": 18,
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "המותגים שאנחנו מייצגים"
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    }
+  ],
+  "blocks": [
+    {
+      "type": "brand",
+      "name": "מותג",
+      "settings": [
+        {
+          "type": "collection",
+          "id": "collection",
+          "label": "קטגוריית המותג",
+          "info": "הלוגו והקישור נלקחים אוטומטית מתמונת הקטגוריה ומהכתובת שלה."
+        },
+        {
+          "type": "image_picker",
+          "id": "logo",
+          "label": "לוגו (עוקף את תמונת הקטגוריה)",
+          "info": "מומלץ PNG שקוף ברוחב 320px לפחות."
+        },
+        {
+          "type": "text",
+          "id": "name",
+          "label": "שם המותג",
+          "info": "מוצג כטקסט כשאין לוגו. אם ריק - נלקח שם הקטגוריה."
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "קישור (עוקף את כתובת הקטגוריה)"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "רצועת מותגים",
+      "blocks": [
+        { "type": "brand" },
+        { "type": "brand" },
+        { "type": "brand" },
+        { "type": "brand" },
+        { "type": "brand" },
+        { "type": "brand" }
+      ]
+    }
+  ]
+}
+{% endschema %}

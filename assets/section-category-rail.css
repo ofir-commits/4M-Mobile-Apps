@@ -1,0 +1,199 @@
+/* =========================================================
+   Shilo Pro — Category rail (v2 "Clarity")
+   Compact department tiles under the hero: swipeable row on
+   mobile, even grid from 750px (4 up) and 1100px (6 up).
+   Tokens only — see theme/DESIGN-SYSTEM.md.
+   ========================================================= */
+
+.category-rail__header {
+  align-items: center;
+  margin-block-end: clamp(0.9rem, 1.6vw, 1.4rem);
+}
+
+/* Hard rule: every tap target >= 44px. */
+.category-rail .section-header__link {
+  min-block-size: 44px;
+}
+
+/* ---------- Track: rail under 750px ----------
+   The element also carries .grid, whose 2-column template would fight
+   the rail's column auto-flow, so it is dropped at rail widths. */
+.category-rail__track {
+  grid-auto-columns: min(38vw, 168px);
+  margin-block: 0;
+  scroll-padding-inline: var(--page-gutter);
+}
+
+@media (max-width: 749px) {
+  .category-rail__track { grid-template-columns: none; }
+}
+
+/* ---------- Track: grid from 750px ----------
+   .grid--6 supplies the columns (4 up, 6 up from 1100px); the rail's
+   scroll behaviour is undone so the hover lift is not clipped. */
+@media (min-width: 750px) {
+  .category-rail__track {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    gap: clamp(0.7rem, 1.4vw, 1.15rem);
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding-inline: 0;
+    padding-block-end: 0;
+    margin-inline: 0;
+  }
+}
+
+.category-rail__item {
+  display: flex;
+  min-inline-size: 0;
+}
+
+/* ---------- Tile ---------- */
+.category-rail__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  inline-size: 100%;
+  padding: 0.5rem 0.5rem 0.7rem;
+  text-decoration: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) ease;
+}
+
+@media (hover: hover) {
+  .category-rail__tile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(var(--color-accent-rgb), 0.35);
+  }
+
+  .category-rail__tile:hover .category-rail__title { color: var(--color-accent); }
+}
+
+/* ---------- Department images: one flat field ----------
+   One surface, one token, uniform padding, image contained inside it —
+   nothing nested, nothing framed. (The earlier sunken-well + white-window
+   treatment read as a square inside a square; a later amber field was
+   rejected by the owner on sight.) The owner's direction: the field should be
+   the background most of the department images already carry — white — so the
+   default of --color-tile-bg is now the surface white and the images melt
+   into the tile. The token stays merchant-tintable from theme settings.
+   The padding lives on this wrapper and NOT on .media: base.css absolutely
+   positions .media > img with inset: 0 against the padding box, so padding on
+   .media itself would not inset the image at all.
+   Percentage padding resolves against the inline size on BOTH axes, so the
+   four sides stay equal at every breakpoint and the plate stays square. */
+.category-rail__plate {
+  display: block;
+  /* Slim ring: the owner asked for the image square to be as large as it can
+     be inside the card. The plate colour defaults (via the token's setting)
+     to the cream field baked into the designed department images, so plate
+     and image read as one surface; the white-background photo tiles are
+     multiply-blended onto it (see below), which lands their white exactly on
+     the same cream. */
+  padding: 2.5%;
+  background-color: var(--color-tile-bg, var(--color-surface));
+  border-radius: var(--radius-base);
+}
+
+/* The media box itself is invisible: no background, no border, no vignette.
+   .media in base.css supplies position, overflow, the square ratio and
+   object-fit: contain, so nothing is cropped (one source is a 333x500
+   portrait) and the amber field shows through its letterbox gutters. */
+.category-rail__plate > .category-rail__media {
+  background-color: transparent;
+  border-radius: 0;
+}
+
+/* Three of the twelve sources are opaque product photos on a (near-)white
+   field; on a coloured plate they would read as white rectangles. multiply
+   maps white exactly onto the plate colour (1×C = C), so those photos merge
+   into the amber seamlessly while the dark product stays. It is applied ONLY
+   to tiles the merchant marks as photos-on-white (block checkbox): on the
+   designed tiles, which carry their own baked-in field colours, multiply
+   would tint and darken the artwork instead. isolation keeps the blend inside
+   the plate — without it the image would multiply against the card and page.
+   Decision log: docs/STORE-HEALTH.md. */
+.category-rail__plate--blend {
+  isolation: isolate;
+}
+
+.category-rail__plate--blend > .category-rail__media img {
+  mix-blend-mode: multiply;
+}
+
+/* Missing image: same plate, only the glyph differs, so a broken tile keeps
+   its place in the row. .placeholder-svg carries its own sunken background —
+   cleared so the plate colour is the field here too. */
+.category-rail__plate > .category-rail__media > .placeholder-svg {
+  background: transparent;
+}
+
+/* Icon plate - the rejected path, kept working but no longer the default. Drawing
+   the mark ourselves is uniform by construction, which is why it was tried, but
+   the owner read the glyphs as unattractive and asked for the photographs back;
+   tile_style now defaults to "image" and the well above carries the uniformity.
+   The branch stays so the setting still has two working values and a re-inserted
+   preset cannot render an empty tile. The accent tint is the same one the contact
+   card's icons use, so the mark reads as brand furniture, not a missing image. */
+.category-rail__media--icon {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  transition: background-color var(--duration-base) ease, color var(--duration-base) ease;
+}
+
+.category-rail__media--icon .icon {
+  inline-size: clamp(28px, 4vw, 38px);
+  block-size: clamp(28px, 4vw, 38px);
+}
+
+@media (hover: hover) {
+  .category-rail__tile:hover .category-rail__media--icon {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+}
+
+/* ---------- Copy ---------- */
+.category-rail__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding-inline: 0.3rem;
+  min-inline-size: 0;
+}
+
+.category-rail__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  inline-size: 100%;
+  overflow-wrap: break-word;
+  font-family: var(--font-heading-family);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
+  /* Steady two-line box keeps the count pills on one baseline. */
+  min-block-size: 2.6em;
+  transition: color var(--duration-fast) ease;
+}
+
+@media (min-width: 1100px) {
+  .category-rail__title { font-size: 0.95rem; }
+}

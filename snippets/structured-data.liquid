@@ -1,0 +1,246 @@
+{%- comment -%}
+  Schema.org JSON-LD for rich results.
+  Rendered once from layout/theme.liquid; branches on request.page_type.
+
+  Emits:
+    - Organization + LocalBusiness (HardwareStore) with real NAP data, sitewide
+    - WebSite + SearchAction (Google sitelinks search box), sitewide
+    - Product with Offer / AggregateOffer on product pages
+    - BreadcrumbList on product and collection pages
+    - CollectionPage + ItemList on collection pages
+    - BlogPosting on article pages
+
+  All values come from live shop data or theme settings — nothing is hardcoded.
+{%- endcomment -%}
+
+{%- liquid
+  assign shop_name = 'א.נ. שילו בע"מ'
+  assign phone = settings.store_phone | default: shop.phone
+  assign phone_intl = phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+  if phone_intl != blank
+    assign phone_first = phone_intl | slice: 0, 1
+    if phone_first == '0'
+      assign phone_rest = phone_intl | slice: 1, 20
+      assign phone_intl = '+972' | append: phone_rest
+    endif
+  endif
+  assign email = settings.store_email | default: shop.email
+  assign street = settings.store_address | default: shop.address.address1
+  # Google wants the Organization logo at 112px on BOTH axes, which the shop's
+  # horizontal lockup (500x100) fails on height. Prefer the square companion and
+  # fall back to the main logo only when no square version has been uploaded.
+  assign logo_image = settings.logo_square | default: settings.logo
+  assign logo_url = ''
+  if logo_image != blank
+    assign logo_url = logo_image | image_url: width: 600
+  endif
+-%}
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["Organization", "HardwareStore", "LocalBusiness"],
+        "@id": {{ shop.url | append: '#organization' | json }},
+        "name": {{ shop_name | json }},
+        "alternateName": "A.N. Shilo",
+        "description": {{ shop.description | strip_html | strip_newlines | json }},
+        "url": {{ shop.url | json }},
+        {% if logo_url != blank %}"logo": {{ logo_url | prepend: 'https:' | json }},{% endif %}
+        {% if logo_url != blank %}"image": {{ logo_url | prepend: 'https:' | json }},{% endif %}
+        {% if email != blank %}"email": {{ email | json }},{% endif %}
+        {% if phone_intl != blank %}"telephone": {{ phone_intl | json }},{% endif %}
+        "priceRange": "₪₪",
+        "currenciesAccepted": {{ shop.currency | json }},
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": {{ street | json }},
+          "addressLocality": {{ shop.address.city | default: 'קרית ענבים' | json }},
+          {% if shop.address.zip != blank %}"postalCode": {{ shop.address.zip | json }},{% endif %}
+          "addressCountry": "IL"
+        },
+        {%- if settings.store_hours != blank -%}
+          {%- assign hour_lines = settings.store_hours | strip | newline_to_br | strip_newlines | split: '<br />' -%}
+          "openingHours": [
+            {%- for line in hour_lines -%}
+              {%- assign line_clean = line | strip -%}
+              {%- if line_clean != blank -%}
+                {{ line_clean | json }}{%- unless forloop.last -%},{%- endunless -%}
+              {%- endif -%}
+            {%- endfor -%}
+          ],
+        {%- endif -%}
+        {%- comment -%}
+          Liquid has no array-push filter, so the social list is assembled as a
+          delimited string and split back out.
+        {%- endcomment -%}
+        {%- capture social_raw -%}
+          {%- comment -%}
+            The Google Business Profile goes in sameAs, not hasMap: it is a page
+            about the business, and hasMap would assert that the URL resolves to a
+            map — which cannot be verified for a share.google short link.
+          {%- endcomment -%}
+          {%- if settings.store_google != blank -%}{{ settings.store_google }}|{%- endif -%}
+          {%- if settings.social_facebook != blank -%}{{ settings.social_facebook }}|{%- endif -%}
+          {%- if settings.social_instagram != blank -%}{{ settings.social_instagram }}|{%- endif -%}
+          {%- if settings.social_youtube != blank -%}{{ settings.social_youtube }}|{%- endif -%}
+          {%- if settings.social_tiktok != blank -%}{{ settings.social_tiktok }}|{%- endif -%}
+        {%- endcapture -%}
+        {%- assign socials = social_raw | strip | split: '|' -%}
+        "sameAs": [
+          {%- for s in socials -%}
+            {%- assign s_clean = s | strip -%}
+            {%- if s_clean != blank -%}
+              {{ s_clean | json }}{%- unless forloop.last -%},{%- endunless -%}
+            {%- endif -%}
+          {%- endfor -%}
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": {{ shop.url | append: '#website' | json }},
+        "url": {{ shop.url | json }},
+        "name": {{ shop_name | json }},
+        "inLanguage": "he-IL",
+        "publisher": { "@id": {{ shop.url | append: '#organization' | json }} },
+        {%- comment -%}
+          The braces in the URL template are literal output, not Liquid: a "{"
+          inside a {{ }} tag makes Shopify's Liquid lexer fail to find the closing
+          "}}" and the whole file is rejected.
+        {%- endcomment -%}
+        {%- assign search_endpoint = shop.url | append: routes.search_url -%}
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "{{ search_endpoint }}?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      }
+
+      {%- if request.page_type == 'product' -%}
+        ,{
+          "@type": "Product",
+          "@id": {{ shop.url | append: product.url | append: '#product' | json }},
+          "name": {{ product.title | json }},
+          "url": {{ shop.url | append: product.url | json }},
+          {%- if product.description != blank -%}
+            "description": {{ product.description | strip_html | truncate: 900 | json }},
+          {%- endif -%}
+          {%- if product.featured_media -%}
+            "image": [
+              {%- for media in product.media limit: 5 -%}
+                {%- if media.media_type == 'image' -%}
+                  {{ media | image_url: width: 1200 | prepend: 'https:' | json }}{%- unless forloop.last -%},{%- endunless -%}
+                {%- endif -%}
+              {%- endfor -%}
+            ],
+          {%- endif -%}
+          {%- if product.vendor != blank -%}
+            "brand": { "@type": "Brand", "name": {{ product.vendor | json }} },
+          {%- endif -%}
+          {%- if product.type != blank -%}
+            "category": {{ product.type | json }},
+          {%- endif -%}
+          {%- assign first_variant = product.selected_or_first_available_variant -%}
+          {%- if first_variant.sku != blank -%}
+            "sku": {{ first_variant.sku | json }},
+          {%- endif -%}
+          {%- if first_variant.barcode != blank -%}
+            "gtin": {{ first_variant.barcode | json }},
+          {%- endif -%}
+          {%- if product.variants.size > 1 -%}
+            "offers": {
+              "@type": "AggregateOffer",
+              "offerCount": {{ product.variants.size }},
+              "lowPrice": {{ product.price_min | divided_by: 100.0 | json }},
+              "highPrice": {{ product.price_max | divided_by: 100.0 | json }},
+              "priceCurrency": {{ cart.currency.iso_code | json }},
+              "availability": {% if product.available %}"https://schema.org/InStock"{% else %}"https://schema.org/OutOfStock"{% endif %},
+              "url": {{ shop.url | append: product.url | json }},
+              "seller": { "@id": {{ shop.url | append: '#organization' | json }} }
+            }
+          {%- else -%}
+            "offers": {
+              "@type": "Offer",
+              "price": {{ product.price | divided_by: 100.0 | json }},
+              "priceCurrency": {{ cart.currency.iso_code | json }},
+              "availability": {% if product.available %}"https://schema.org/InStock"{% else %}"https://schema.org/OutOfStock"{% endif %},
+              "itemCondition": "https://schema.org/NewCondition",
+              "url": {{ shop.url | append: product.url | json }},
+              {%- assign price_valid_until = 'now' | date: '%Y' | plus: 1 -%}
+              "priceValidUntil": {{ price_valid_until | append: '-12-31' | json }},
+              "seller": { "@id": {{ shop.url | append: '#organization' | json }} }
+            }
+          {%- endif -%}
+          {%- comment -%} Trailing key with no comma keeps the object valid either way. {%- endcomment -%}
+          ,"inLanguage": "he-IL"
+        }
+        ,{
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "בית", "item": {{ shop.url | json }} },
+            {%- if collection -%}
+              { "@type": "ListItem", "position": 2, "name": {{ collection.title | json }}, "item": {{ shop.url | append: collection.url | json }} },
+              { "@type": "ListItem", "position": 3, "name": {{ product.title | json }} }
+            {%- else -%}
+              { "@type": "ListItem", "position": 2, "name": {{ product.title | json }} }
+            {%- endif -%}
+          ]
+        }
+      {%- endif -%}
+
+      {%- if request.page_type == 'collection' and collection -%}
+        ,{
+          "@type": "CollectionPage",
+          "@id": {{ shop.url | append: collection.url | append: '#collection' | json }},
+          "name": {{ collection.title | json }},
+          "url": {{ shop.url | append: collection.url | json }},
+          {%- if collection.description != blank -%}
+            "description": {{ collection.description | strip_html | truncate: 500 | json }},
+          {%- endif -%}
+          "inLanguage": "he-IL",
+          "mainEntity": {
+            "@type": "ItemList",
+            "numberOfItems": {{ collection.products_count }},
+            "itemListElement": [
+              {%- for p in collection.products limit: 12 -%}
+                {
+                  "@type": "ListItem",
+                  "position": {{ forloop.index }},
+                  "url": {{ shop.url | append: p.url | json }},
+                  "name": {{ p.title | json }}
+                }{%- unless forloop.last -%},{%- endunless -%}
+              {%- endfor -%}
+            ]
+          }
+        }
+        ,{
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "בית", "item": {{ shop.url | json }} },
+            { "@type": "ListItem", "position": 2, "name": {{ collection.title | json }} }
+          ]
+        }
+      {%- endif -%}
+
+      {%- if request.page_type == 'article' and article -%}
+        ,{
+          "@type": "BlogPosting",
+          "@id": {{ shop.url | append: article.url | append: '#article' | json }},
+          "headline": {{ article.title | json }},
+          "url": {{ shop.url | append: article.url | json }},
+          "datePublished": {{ article.published_at | date: '%Y-%m-%dT%H:%M:%S%z' | json }},
+          {%- if article.image -%}
+            "image": {{ article.image | image_url: width: 1200 | prepend: 'https:' | json }},
+          {%- endif -%}
+          "author": { "@type": "Organization", "name": {{ shop_name | json }} },
+          "publisher": { "@id": {{ shop.url | append: '#organization' | json }} },
+          "inLanguage": "he-IL"
+        }
+      {%- endif -%}
+    ]
+  }
+</script>

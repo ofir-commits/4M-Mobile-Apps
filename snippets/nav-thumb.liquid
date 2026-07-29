@@ -1,0 +1,58 @@
+{%- comment -%}
+  Thumbnail for a navigation link.
+
+  Every item in the shilo-2026-main menu is a real COLLECTION link with a
+  resourceId, so link.object resolves to the collection and link.object.image is
+  the department artwork the store already maintains. A plain URL item would give
+  type == 'http_link' and no object, which is why the type is checked rather than
+  the url: an http link to /collections/x looks identical in the menu but has no
+  resource behind it, and reading .object.image off it would silently render nothing.
+
+  FALLBACK (owner request: every menu entry shows a relevant image): when the
+  collection has no image of its own, a product photo from that collection is
+  used. The product is picked at offset `position` (the item's index within its
+  sibling group) modulo the collection's product count — deterministic, and it
+  keeps two sibling collections that share the same FIRST product (verified in
+  this catalogue: ניקוי כללי / ניקוי רצפות both lead with the same VILEDA dolly)
+  from rendering the same photo twice in one panel, because different rows sit
+  at different offsets. The .products access only happens for collections with
+  no image (14 of ~110 menu entries), so the per-render cost is bounded. The
+  real fix — uploading images to those collections — is listed in
+  docs/STORE-HEALTH.md; once an image exists it wins automatically.
+
+  Only a width is requested. Asking for width AND height would make Shopify crop
+  server-side, and these images are a mix of designed square tiles, product shots
+  and brand wordmarks - cropping a wordmark to a square destroys it. The CSS box is
+  fixed on both axes with object-fit: contain, so there is no layout shift and no
+  need for width/height attributes here.
+
+  Accepts:
+    link     - a linklist link (required)
+    size     - rendered CSS px, default 40. The request is 2x for retina.
+    position - the link's index within its sibling group (forloop.index0);
+               seeds the product-photo fallback. Default 0.
+    class    - extra class on the img
+{%- endcomment -%}
+{%- liquid
+  assign nav_thumb_size = size | default: 40
+  assign nav_thumb_2x = nav_thumb_size | times: 2
+  assign nav_thumb_image = blank
+  if link.type == 'collection_link' and link.object != blank
+    assign nav_thumb_image = link.object.image
+    if nav_thumb_image == blank and link.object.products_count > 0
+      assign nav_thumb_pos = position | default: 0
+      assign nav_thumb_pidx = nav_thumb_pos | modulo: link.object.products.size
+      assign nav_thumb_image = link.object.products[nav_thumb_pidx].featured_image
+    endif
+  endif
+-%}
+{%- if nav_thumb_image != blank -%}
+  <img
+    class="nav-thumb{% if class %} {{ class }}{% endif %}"
+    style="--nav-thumb-size: {{ nav_thumb_size }}px"
+    src="{{ nav_thumb_image | image_url: width: nav_thumb_2x }}"
+    alt=""
+    loading="lazy"
+    decoding="async"
+  >
+{%- endif -%}

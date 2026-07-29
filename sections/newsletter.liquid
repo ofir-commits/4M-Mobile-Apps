@@ -1,0 +1,112 @@
+{{ 'section-newsletter.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign newsletter_form_id = 'NewsletterSectionForm-' | append: section.id
+  assign newsletter_input_id = 'NewsletterSectionEmail-' | append: section.id
+-%}
+
+<div class="section section--ink newsletter" id="Newsletter-{{ section.id }}">
+  <div class="container">
+    <div class="newsletter__inner reveal">
+      <div class="newsletter__intro">
+        <span class="newsletter__icon" aria-hidden="true">
+          {% render 'icon', name: 'mail', size: 22 %}
+        </span>
+
+        {%- if section.settings.heading != blank -%}
+          <h2 class="newsletter__heading">{{ section.settings.heading | escape }}</h2>
+        {%- endif -%}
+
+        {%- if section.settings.text != blank -%}
+          <p class="newsletter__text">{{ section.settings.text | escape | newline_to_br }}</p>
+        {%- endif -%}
+      </div>
+
+      <div class="newsletter__form-col">
+        {%- form 'customer', id: newsletter_form_id, class: 'newsletter__form' -%}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+
+          {%- if form.posted_successfully? -%}
+            <div class="form__success newsletter__success" role="status" tabindex="-1">
+              {% render 'icon', name: 'check-circle', size: 20 %}
+              <span>{{ 'general.newsletter.success' | t }}</span>
+            </div>
+          {%- else -%}
+            {%- if form.errors -%}
+              <div class="errors newsletter__errors" role="alert">
+                {%- assign email_error = form.errors.messages['email'] -%}
+                <p>
+                  {%- if email_error != blank -%}
+                    {{ form.errors.translated_fields['email'] }} {{ email_error }}
+                  {%- else -%}
+                    {{ 'general.newsletter.error' | t }}
+                  {%- endif -%}
+                </p>
+              </div>
+            {%- endif -%}
+
+            <div class="newsletter__row">
+              <label class="visually-hidden" for="{{ newsletter_input_id }}">
+                {{- 'general.newsletter.label' | t -}}
+              </label>
+              <input
+                id="{{ newsletter_input_id }}"
+                class="field__input newsletter__input"
+                type="email"
+                name="contact[email]"
+                value="{{ form.email }}"
+                placeholder="{{ 'general.newsletter.placeholder' | t }}"
+                autocomplete="email"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                required
+              >
+              <button type="submit" class="btn newsletter__btn">
+                {{- 'general.newsletter.button' | t -}}
+              </button>
+            </div>
+          {%- endif -%}
+
+          {%- if section.settings.show_privacy_note -%}
+            <p class="text-meta newsletter__note">
+              {% render 'icon', name: 'shield-check', size: 15 %}
+              <span>{{ 'general.newsletter.privacy_note' | t }}</span>
+            </p>
+          {%- endif -%}
+        {%- endform -%}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "הרשמה לניוזלטר",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "מצטרפים למועדון של שילו"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "טקסט",
+      "default": "מבצעים בלעדיים, חידושים בקטלוג וטיפים של אנשי מקצוע - ישירות למייל."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_privacy_note",
+      "label": "הצגת שורת פרטיות קטנה",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "הרשמה לניוזלטר"
+    }
+  ]
+}
+{% endschema %}

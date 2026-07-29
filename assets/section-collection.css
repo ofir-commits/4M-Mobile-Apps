@@ -1,0 +1,917 @@
+/* =========================================================
+   Shilo Pro — Collection browsing (v2 "Clarity")
+   Collection header, sticky toolbar, faceted filtering
+   (drawer on mobile / sticky sidebar on desktop), product grid,
+   active-filter chips, and the /collections A–Z directory.
+
+   Components (.btn .chip .badge .price .card .panel .product-card
+   .collection-tile .drawer .pagination .breadcrumbs .empty-state …)
+   are owned by base.css. Everything below is layout only.
+   ========================================================= */
+
+/* Distance from the top of the viewport at which sticky UI parks itself.
+   section-header.js publishes the COMPRESSED sticky-header height on :root as
+   --sticky-header-height — the right value here, because by the time anything
+   sticks the page is scrolled and the header has collapsed. (A JS measurement
+   of the header's current box was tried and removed: at scroll-top it reads
+   the EXPANDED header — ~225px with the two-line department row — and the
+   sidebar's max-block-size arithmetic below collapsed to nothing.) */
+.collection-hero,
+.collection-grid,
+.collection-index {
+  --collection-stick: var(--sticky-header-height, 96px);
+}
+
+/* =========================================================
+   1. Collection header
+   ========================================================= */
+.collection-hero {
+  background: var(--color-surface);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.collection-hero__crumbs {
+  padding-block: 0.9rem 0.65rem;
+}
+
+.collection-hero__head {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.85rem, 2vw, 1.35rem);
+  padding-block-end: clamp(0.9rem, 1.8vw, 1.35rem);
+}
+
+.collection-hero__thumb {
+  flex: 0 0 auto;
+  inline-size: 76px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+  padding: 0.4rem;
+}
+
+.collection-hero__text {
+  min-inline-size: 0;
+}
+
+.collection-hero__title {
+  margin: 0;
+}
+
+.collection-hero__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0;
+  font-family: var(--font-heading-family);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.collection-hero__count::before {
+  content: "";
+  inline-size: 24px;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+.collection-hero__desc {
+  padding-block-end: clamp(0.9rem, 1.8vw, 1.4rem);
+}
+
+.collection-hero__desc-content {
+  font-size: 0.96rem;
+  line-height: 1.65;
+  color: var(--color-text-muted);
+  max-inline-size: 78ch;
+}
+
+[data-collapsible-desc].is-collapsed [data-desc-content] {
+  max-block-size: 4.9em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 97%);
+  mask-image: linear-gradient(180deg, #000 55%, transparent 97%);
+}
+
+.collection-hero__desc-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-block-size: 44px;
+  padding: 0.35rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-heading-family);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.collection-hero__desc-toggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.collection-hero__desc-chevron {
+  transition: transform var(--duration-fast) ease;
+}
+
+[data-collapsible-desc]:not(.is-collapsed) .collection-hero__desc-chevron {
+  transform: rotate(180deg);
+}
+
+@media (min-width: 750px) {
+  .collection-hero__thumb {
+    inline-size: 112px;
+  }
+}
+
+/* =========================================================
+   2. Sticky toolbar — count, sort, mobile filter trigger
+   ========================================================= */
+.collection-grid {
+  padding-block: 0 clamp(2.5rem, 4vw, 4.5rem);
+}
+
+/* NOT sticky (owner report, round 7): the bar used to park at
+   --collection-stick, but the site header auto-hides on downward scroll, so
+   the parked bar was left hovering mid-air over the cards — "נשאר צף לבד".
+   Pinning it to 0 instead would jump every time the header hides/reveals.
+   It now scrolls with the page like any other row; on mobile the filter
+   button is at the top of the grid, one flick away. */
+.collection-toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  padding-block: 0.7rem;
+  margin-block-end: clamp(1rem, 2vw, 1.5rem);
+  background: var(--color-page);
+  border-block-end: 1px solid var(--color-border);
+}
+
+/* Bleed the bar's own background over the page gutters so it reads as a
+   full-width rule even inside the padded container. */
+.collection-toolbar::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: calc(var(--page-gutter) * -1);
+  z-index: -1;
+  background: inherit;
+  border-block-end: inherit;
+}
+
+.collection-toolbar__filter-btn {
+  order: 1;
+  flex: 1 1 auto;
+  gap: 0.45rem;
+  min-block-size: 44px;
+}
+
+.collection-toolbar__filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding-inline: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.collection-toolbar__count {
+  order: 3;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.collection-toolbar__sort {
+  order: 2;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-inline-size: 0;
+}
+
+.collection-toolbar__sort-form {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.collection-toolbar__sort-label {
+  display: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.collection-toolbar__sort .select-wrap {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.collection-toolbar__select {
+  min-block-size: 44px;
+  padding-block: 0.5rem;
+  padding-inline: 0.85rem 2.4rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+@media (min-width: 750px) {
+  .collection-toolbar__filter-btn { flex: 0 0 auto; }
+
+  .collection-toolbar__count {
+    order: 2;
+    flex: 1 1 auto;
+    flex-basis: auto;
+  }
+
+  .collection-toolbar__sort {
+    order: 3;
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+  }
+
+  .collection-toolbar__sort .select-wrap { flex: none; }
+
+  .collection-toolbar__select {
+    inline-size: auto;
+    max-inline-size: 260px;
+  }
+
+  .collection-toolbar__sort-label { display: inline; }
+}
+
+@media (min-width: 990px) {
+  .collection-toolbar__filter-btn { display: none; }
+}
+
+/* =========================================================
+   3. Layout — filter sidebar + results
+   ========================================================= */
+.collection-layout {
+  position: relative;
+}
+
+.collection-layout__main {
+  position: relative;
+  min-block-size: 320px;
+}
+
+@media (min-width: 990px) {
+  .collection-layout--with-sidebar {
+    display: grid;
+    grid-template-columns: 268px minmax(0, 1fr);
+    gap: clamp(1.5rem, 3vw, 2.75rem);
+    align-items: start;
+  }
+
+  /* NOT sticky, same round-7 owner report as the toolbar: a pinned panel
+     below an auto-hiding header floats detached once the header hides. The
+     sidebar now flows with the page — no height clamp, no inner scrollbar,
+     nothing left hovering. */
+  .collection-layout__sidebar {
+    padding-inline-end: 0.35rem;
+  }
+}
+
+/* Product grid: always 2 up on phones, 3 up on tablets, and the
+   section's column setting from 1100px. */
+.collection-products {
+  transition: opacity var(--duration-fast) ease;
+}
+
+@media (min-width: 750px) and (max-width: 1099px) {
+  .collection-products {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.collection-products__item {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.collection-products__item > .product-card {
+  inline-size: 100%;
+}
+
+/* The card's title anchor paints a full-card ::after overlay at z-index 1.
+   base.css lifts quick-add above it only where hover is available, so raise it
+   for touch too — stacking only, no visual change. */
+.collection-products .product-card__quick-add {
+  position: relative;
+  z-index: 3;
+}
+
+.collection-products .product-card__sku {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   4. Active filter chips
+   ========================================================= */
+.active-facets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block-end: clamp(0.9rem, 1.6vw, 1.25rem);
+}
+
+.active-facets__label {
+  font-family: var(--font-heading-family);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.active-facets__chip {
+  max-inline-size: 100%;
+  min-block-size: 44px;
+}
+
+.active-facets__chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-facets__chip .icon {
+  opacity: 0.7;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.active-facets__chip:hover .icon { opacity: 1; }
+
+.active-facets__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-block-size: 44px;
+  padding-inline: 0.5rem;
+  font-family: var(--font-heading-family);
+  font-size: 0.87rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.active-facets__clear:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* =========================================================
+   5. Loading state while facets re-render
+   ========================================================= */
+.facets-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: none;
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-facets-container].is-loading .facets-loading {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  padding-block-start: clamp(3.5rem, 16vh, 8rem);
+}
+
+[data-facets-container].is-loading .collection-products,
+[data-facets-container].is-loading .pagination,
+[data-facets-container].is-loading .active-facets {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* =========================================================
+   6. Facets — drawer on mobile, static sidebar on desktop
+   ========================================================= */
+.facets-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding-inline: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.facets-drawer__actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 0.6rem;
+}
+
+.facets-title { display: none; }
+
+.facet {
+  border-block-end: 1px solid var(--color-border);
+}
+
+.facets-form > .facet:first-of-type {
+  border-block-start: 1px solid var(--color-border);
+}
+
+.facet__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.9rem;
+  min-block-size: 46px;
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: var(--color-ink);
+  user-select: none;
+  transition: color var(--duration-fast) ease;
+}
+
+.facet__summary:hover { color: var(--color-accent); }
+
+.facet__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+.facet__selected {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.facet__chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+details[open] > .facet__summary .facet__chevron { transform: rotate(180deg); }
+
+.facet__content {
+  padding-block: 0.1rem 1rem;
+}
+
+/* ---- List filters ---- */
+.facet__values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+/* Once "show more" is open, a very long option list scrolls in place instead
+   of pushing the whole sidebar. */
+.facet__values--expandable:not(.is-truncated) {
+  max-block-size: 330px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline-end: 0.3rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.facet__value {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-block-size: 44px;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.facet__value:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+
+.facet__value:has(input:checked) {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.facet__value:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.facet__value--disabled {
+  color: var(--color-text-muted);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.facet__value--disabled:hover { background: transparent; color: var(--color-text-muted); }
+
+.facet__value-label {
+  flex: 1;
+  min-inline-size: 0;
+  overflow-wrap: break-word;
+}
+
+.facet__count {
+  flex-shrink: 0;
+  font-family: var(--font-heading-family);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-pill);
+  padding: 0.08rem 0.5rem;
+}
+
+.facet__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-block-size: 44px;
+  margin-block-start: 0.2rem;
+  padding: 0.3rem 0.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-heading-family);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.facet__more:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.facet__more-chevron { transition: transform var(--duration-fast) ease; }
+
+.facet__more[aria-expanded="true"] .facet__more-chevron { transform: rotate(180deg); }
+
+/* ---- Boolean filters as switches ---- */
+.facet--switch { padding-block: 0.4rem; }
+
+.facet-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-block-size: 48px;
+  padding-inline: 0.4rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease;
+}
+
+.facet-switch:hover { background: var(--color-surface-alt); }
+
+.facet-switch__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.facet-switch__track {
+  position: relative;
+  flex: 0 0 auto;
+  inline-size: 40px;
+  block-size: 23px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+  transition: background-color var(--duration-base) ease;
+}
+
+.facet-switch__track::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-start: 3px;
+  inline-size: 17px;
+  block-size: 17px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.facet-switch__input:checked ~ .facet-switch__track { background: var(--color-accent); }
+
+.facet-switch__input:checked ~ .facet-switch__track::after { transform: translateX(17px); }
+
+[dir="rtl"] .facet-switch__input:checked ~ .facet-switch__track::after { transform: translateX(-17px); }
+
+.facet-switch__input:focus-visible ~ .facet-switch__track {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.facet-switch__text {
+  flex: 1;
+  min-inline-size: 0;
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-ink);
+}
+
+/* ---- Price filter ---- */
+.facet-price {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.facet-price__track {
+  position: relative;
+  block-size: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.facet-price__span {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--range-start, 0%);
+  inline-size: var(--range-span, 100%);
+  border-radius: inherit;
+  background: var(--color-accent);
+}
+
+.facet-price__inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.facet-price__sep {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.facet-price__field {
+  position: relative;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.facet-price__currency {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.facet-price__input {
+  min-block-size: 44px;
+  padding-inline: 2rem 0.6rem;
+  font-size: 0.94rem;
+  font-weight: 600;
+  text-align: start;
+}
+
+.facet__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.facets-form__noscript { margin-block-start: 1rem; }
+
+/* ---- Desktop: neutralise the drawer chrome, render as a sidebar ----
+   SPECIFICITY TRAP (this bug shipped): base.css closes the drawer with
+   `[dir="rtl"] .drawer--end { transform: translateX(-100%) }` — that is
+   (0,2,0). A bare `.facets-drawer { transform: none }` is only (0,1,0), so on
+   this RTL storefront the "neutralised" sidebar stayed shifted one full width
+   to the left, under the product grid, which paints over it — the filters
+   appeared as slivers peeking through the grid gaps. Every rule that must
+   beat the drawer's closed state is therefore written at (0,3,0) via
+   `[dir] .collection-layout__sidebar .facets-drawer`. */
+@media (min-width: 990px) {
+  [dir] .collection-layout__sidebar .facets-drawer {
+    position: static;
+    inset: auto;
+    inline-size: 100%;
+    transform: none;
+    visibility: visible;
+    box-shadow: none;
+    background: transparent;
+    transition: none;
+    z-index: auto;
+  }
+
+  .facets-drawer .drawer__header,
+  .facets-drawer .drawer__footer { display: none; }
+
+  .facets-drawer .drawer__body {
+    flex: none;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .facets-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block-end: 0.55rem;
+    font-family: var(--font-heading-family);
+    font-weight: 800;
+    color: var(--color-ink);
+  }
+
+  .facets-title__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .facets-title__clear {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+}
+
+/* =========================================================
+   7. /collections — the A–Z department directory
+   ========================================================= */
+.collection-index__crumbs { padding-block-end: 0.75rem; }
+
+.collection-index__head {
+  align-items: flex-start;
+  margin-block-end: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* NOT sticky — same round-7 rule as the collection toolbar: anything pinned
+   below the auto-hiding header is left floating alone once the header hides. */
+.collection-index__jump {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 0.6rem;
+  margin-block-end: clamp(1.25rem, 2.5vw, 2rem);
+  background: var(--color-page);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.collection-index__jump::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: calc(var(--page-gutter) * -1);
+  z-index: -1;
+  background: inherit;
+  border-block-end: inherit;
+}
+
+.collection-index__jump-label {
+  display: none;
+  flex-shrink: 0;
+  font-family: var(--font-heading-family);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.collection-index__jump-list {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.collection-index__jump-list::-webkit-scrollbar { height: 5px; }
+.collection-index__jump-list::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 3px;
+}
+
+.collection-index__jump-link {
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding-inline: 0.5rem;
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+}
+
+.collection-index__group {
+  scroll-margin-block-start: calc(var(--collection-stick) + 4.5rem);
+}
+
+.collection-index__group + .collection-index__group {
+  margin-block-start: clamp(1.75rem, 3vw, 2.75rem);
+}
+
+.collection-index__letter {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0 0 0.9rem;
+  font-size: calc(1.15rem * var(--font-heading-scale));
+  color: var(--color-accent);
+}
+
+.collection-index__letter::after {
+  content: "";
+  flex: 1;
+  block-size: 1px;
+  background: var(--color-border);
+}
+
+.collection-index__item {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.collection-index__item > .collection-tile { inline-size: 100%; }
+
+/* Long department names have to be able to shrink beside the count. */
+.collection-index .collection-tile__title { min-inline-size: 0; }
+
+/* Text-only mode: nothing sits above the body, so drop its divider. */
+.collection-index .collection-tile__body:first-child { border-block-start: none; }
+
+.collection-index__initial {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  line-height: 1;
+  color: rgba(var(--color-ink-rgb), 0.14);
+  background: var(--color-surface-alt);
+  background-image:
+    linear-gradient(var(--blueprint-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--blueprint-line) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
+  user-select: none;
+}
+
+.collection-index__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 750px) {
+  .collection-index__jump-label { display: inline; }
+
+  .collection-index__jump-list { flex-wrap: wrap; overflow-x: visible; }
+}

@@ -1,0 +1,348 @@
+{{ 'cart-drawer.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  # free_shipping_threshold is a plain ILS number in the theme settings, while
+  # cart.total_price is in agorot — so the threshold is scaled up by 100 and
+  # every amount is printed through the money filters, never divided by hand.
+  assign threshold_setting = settings.free_shipping_threshold | strip
+  assign threshold_agorot = 0
+  if threshold_setting != blank
+    assign threshold_agorot = threshold_setting | times: 100 | round
+  endif
+-%}
+
+<div
+  id="CartDrawer"
+  class="drawer drawer--end cart-drawer"
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-label="{{ 'sections.cart_drawer.title' | t }}"
+>
+  <div class="cart-drawer__inner" data-cart-section="{{ section.id }}">
+    <header class="drawer__header cart-drawer__header">
+      <h2 class="drawer__title">
+        {{ 'sections.cart_drawer.title' | t }}
+        {%- if cart.item_count > 0 -%}
+          <span class="badge cart-drawer__count">
+            <span aria-hidden="true" dir="ltr">{{ cart.item_count }}</span>
+            <span class="visually-hidden">{{ 'general.accessibility.cart_count' | t: count: cart.item_count }}</span>
+          </span>
+        {%- endif -%}
+      </h2>
+      <button
+        type="button"
+        class="btn-icon cart-drawer__close"
+        data-drawer-close
+        aria-label="{{ 'general.accessibility.close' | t }}"
+      >
+        {% render 'icon', name: 'close', size: 22 %}
+      </button>
+    </header>
+
+    {%- if cart.item_count > 0 -%}
+      {%- if threshold_agorot > 0 -%}
+        {%- liquid
+          assign shipping_remaining = threshold_agorot | minus: cart.total_price
+          assign shipping_progress = cart.total_price | times: 100.0 | divided_by: threshold_agorot | at_most: 100 | round
+        -%}
+        <div class="cart-drawer__shipping">
+          <div class="shipping-bar{% if shipping_remaining <= 0 %} shipping-bar--reached{% endif %}" role="status">
+            <span class="shipping-bar__label">
+              {%- if shipping_remaining <= 0 -%}
+                {% render 'icon', name: 'check-circle', size: 18 %}
+                <span>{{ 'cart.shipping_bar.free_shipping_reached' | t }}</span>
+              {%- else -%}
+                {% render 'icon', name: 'truck', size: 18 %}
+                {%- assign remaining_money = shipping_remaining | money -%}
+                <span>{{ 'cart.shipping_bar.free_shipping_remaining_html' | t: amount: remaining_money }}</span>
+              {%- endif -%}
+            </span>
+            <div class="shipping-bar__track" aria-hidden="true">
+              <div class="shipping-bar__fill" style="width: {{ shipping_progress }}%;"></div>
+            </div>
+          </div>
+        </div>
+      {%- endif -%}
+
+      <div class="drawer__body cart-drawer__body">
+        <ul class="cart-drawer__lines" role="list">
+          {%- for item in cart.items -%}
+            {%- liquid
+              assign line_max = false
+              if item.variant.inventory_management != blank and item.variant.inventory_policy == 'deny'
+                assign line_max = item.variant.inventory_quantity | at_least: item.quantity
+              endif
+              assign qty_id = 'CartDrawerQty-' | append: section.id | append: '-' | append: forloop.index
+              assign line_on_sale = false
+              if item.original_price > item.final_price
+                assign line_on_sale = true
+              endif
+            -%}
+            <li class="cart-drawer-line" data-cart-line>
+              <a
+                href="{{ item.url }}"
+                class="cart-drawer-line__media media media--square media--contain"
+                tabindex="-1"
+                aria-hidden="true"
+              >
+                {%- if item.image -%}
+                  <img
+                    src="{{ item.image | image_url: width: 144 }}"
+                    srcset="{{ item.image | image_url: width: 72 }} 72w, {{ item.image | image_url: width: 144 }} 144w"
+                    sizes="72px"
+                    width="72"
+                    height="72"
+                    alt="{{ item.image.alt | default: item.product.title | escape }}"
+                    loading="lazy"
+                  >
+                {%- else -%}
+                  {%- assign ph_index = forloop.index0 | modulo: 6 | plus: 1 -%}
+                  {{ 'product-' | append: ph_index | placeholder_svg_tag: 'placeholder-svg' }}
+                {%- endif -%}
+              </a>
+
+              <div class="cart-drawer-line__info">
+                <a href="{{ item.url }}" class="cart-drawer-line__title">{{ item.product.title | escape }}</a>
+
+                {%- unless item.product.has_only_default_variant -%}
+                  <span class="cart-drawer-line__options">
+                    {%- for option in item.options_with_values -%}
+                      {{- option.value | escape -}}
+                      {%- unless forloop.last %} · {% endunless -%}
+                    {%- endfor -%}
+                  </span>
+                {%- endunless -%}
+
+                {%- if item.selling_plan_allocation -%}
+                  <span class="cart-drawer-line__options">
+                    {{- item.selling_plan_allocation.selling_plan.name | escape -}}
+                  </span>
+                {%- endif -%}
+
+                {%- unless item.variant.available -%}
+                  <span class="stock-dot stock-dot--out">{{ 'products.product.sold_out' | t }}</span>
+                {%- endunless -%}
+
+                {%- if item.line_level_discount_allocations.size > 0 -%}
+                  <ul class="cart-drawer-line__discounts" role="list">
+                    {%- for allocation in item.line_level_discount_allocations -%}
+                      <li class="badge cart-drawer-line__discount">
+                        {% render 'icon', name: 'tag', size: 12 %}
+                        <span>{{ allocation.discount_application.title | escape }}</span>
+                        <span dir="ltr">−{{ allocation.amount | money }}</span>
+                      </li>
+                    {%- endfor -%}
+                  </ul>
+                {%- endif -%}
+              </div>
+
+              <cart-remove-button class="cart-drawer-line__remove" data-line="{{ forloop.index }}">
+                <button
+                  type="button"
+                  class="btn-icon cart-drawer-line__remove-btn"
+                  aria-label="{{ 'cart.general.remove' | t: product: item.product.title | escape }}"
+                  title="{{ 'cart.general.remove_title' | t }}"
+                >
+                  {% render 'icon', name: 'trash', size: 18 %}
+                </button>
+              </cart-remove-button>
+
+              <div class="price cart-drawer-line__unit{% if line_on_sale %} price--on-sale{% endif %}">
+                <span class="price__current" dir="ltr">
+                  <span class="visually-hidden">
+                    {%- if line_on_sale -%}
+                      {{ 'products.price.sale_price' | t }}
+                    {%- else -%}
+                      {{ 'products.price.regular_price' | t }}
+                    {%- endif -%}
+                  </span>
+                  {{- item.final_price | money -}}
+                </span>
+                {%- if line_on_sale -%}
+                  <s class="price__compare" dir="ltr">
+                    <span class="visually-hidden">{{ 'products.price.regular_price' | t }}</span>
+                    {{- item.original_price | money -}}
+                  </s>
+                {%- endif -%}
+                <span class="cart-drawer-line__each">{{ 'cart.general.each' | t }}</span>
+                {%- if item.unit_price_measurement -%}
+                  <span class="price__unit">
+                    <span class="visually-hidden">{{ 'products.price.unit_price' | t }}</span>
+                    <span dir="ltr">{{ item.unit_price | money }}</span>
+                    {{ 'products.price.unit_price_separator' | t }}
+                    {%- if item.unit_price_measurement.reference_value != 1 -%}
+                      {{- item.unit_price_measurement.reference_value -}}
+                    {%- endif -%}
+                    {{ item.unit_price_measurement.reference_unit }}
+                  </span>
+                {%- endif -%}
+              </div>
+
+              <div class="cart-drawer-line__controls">
+                <cart-line-qty data-line="{{ forloop.index }}">
+                  {% render 'quantity-input',
+                    id: qty_id,
+                    line: forloop.index,
+                    value: item.quantity,
+                    max: line_max,
+                    product_title: item.product.title
+                  %}
+                </cart-line-qty>
+
+                <div class="price cart-drawer-line__total">
+                  <span class="visually-hidden">{{ 'cart.general.total' | t }}</span>
+                  <span class="price__current" dir="ltr">{{ item.final_line_price | money }}</span>
+                </div>
+              </div>
+            </li>
+          {%- endfor -%}
+        </ul>
+
+        {%- if settings.cart_show_note -%}
+          <details class="cart-drawer__note"{% if cart.note != blank %} open{% endif %}>
+            <summary class="cart-drawer__note-toggle">
+              {% render 'icon', name: 'clipboard', size: 17 %}
+              <span>{{ 'cart.general.note_label' | t }}</span>
+              {% render 'icon', name: 'chevron-down', size: 16, class: 'cart-drawer__note-chevron' %}
+            </summary>
+            <div class="field cart-drawer__note-field">
+              <label class="visually-hidden" for="CartDrawerNote-{{ section.id }}">
+                {{ 'cart.general.note_label' | t }}
+              </label>
+              <textarea
+                id="CartDrawerNote-{{ section.id }}"
+                class="field__textarea"
+                name="note"
+                rows="3"
+                data-cart-note
+                placeholder="{{ 'cart.general.note_placeholder' | t }}"
+              >{{ cart.note }}</textarea>
+            </div>
+          </details>
+        {%- endif -%}
+      </div>
+
+      <footer class="drawer__footer cart-drawer__footer">
+        {%- if cart.total_discount > 0 -%}
+          <div class="cart-drawer__row cart-drawer__row--savings">
+            <span>{{ 'cart.general.savings' | t }}</span>
+            <span dir="ltr">−{{ cart.total_discount | money }}</span>
+          </div>
+        {%- endif -%}
+
+        <div class="cart-drawer__row cart-drawer__row--subtotal">
+          <span class="cart-drawer__row-label">{{ 'cart.general.subtotal' | t }}</span>
+          <div class="price cart-drawer__subtotal">
+            <span class="price__current" dir="ltr">{{ cart.total_price | money }}</span>
+          </div>
+        </div>
+
+        {%- if section.settings.final_price_note != blank -%}
+          <p class="cart-drawer__fineprint">
+            {% render 'icon', name: 'info', size: 15 %}
+            <span>{{ section.settings.final_price_note }}</span>
+          </p>
+        {%- endif -%}
+
+        <form action="{{ routes.cart_url }}" method="post" class="cart-drawer__actions">
+          <button type="submit" name="checkout" class="btn btn--lg btn--full">
+            {{ 'cart.general.checkout' | t }}
+            {% render 'icon', name: 'arrow-right', size: 20, class: 'icon--dir' %}
+          </button>
+        </form>
+
+        <div class="cart-drawer__secondary">
+          <button type="button" class="btn btn--ghost cart-drawer__continue" data-drawer-close>
+            {{ 'cart.general.continue_shopping' | t }}
+          </button>
+          <a href="{{ routes.cart_url }}" class="btn btn--ghost cart-drawer__view-cart">
+            {{ 'cart.general.view_cart' | t }}
+          </a>
+        </div>
+      </footer>
+    {%- else -%}
+      <div class="drawer__body cart-drawer__body cart-drawer__body--empty">
+        <div class="empty-state cart-drawer__empty">
+          {% render 'icon', name: 'cart', size: 52 %}
+          <h3 class="empty-state__title h4">{{ 'sections.cart_drawer.empty' | t }}</h3>
+          <p class="empty-state__text">{{ 'sections.cart_drawer.empty_hint' | t }}</p>
+          <a href="{{ routes.all_products_collection_url }}" class="btn cart-drawer__empty-cta" data-drawer-close>
+            {{ 'sections.cart_drawer.start_shopping' | t }}
+            {% render 'icon', name: 'arrow-right', size: 18, class: 'icon--dir' %}
+          </a>
+
+          {%- if settings.popular_searches != blank -%}
+            <div class="cart-drawer__popular">
+              <p class="cart-drawer__popular-title">{{ 'general.search.popular' | t }}</p>
+              <div class="cart-drawer__popular-chips">
+                {%- assign popular_terms = settings.popular_searches | split: ',' -%}
+                {%- for term in popular_terms limit: 6 -%}
+                  {%- assign term_clean = term | strip -%}
+                  {%- if term_clean != blank -%}
+                    <a
+                      class="chip"
+                      href="{{ routes.search_url }}?q={{ term_clean | url_param_escape }}"
+                      data-drawer-close
+                    >
+                      {% render 'icon', name: 'search', size: 13 %}
+                      {{ term_clean }}
+                    </a>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+<script>
+  (function () {
+    var drawer = document.getElementById('CartDrawer');
+    if (!drawer || drawer.dataset.linkNavBound) return;
+    drawer.dataset.linkNavBound = 'true';
+    /* global.js prevents the default action of [data-drawer-close] clicks —
+       re-apply navigation for close-triggers that are also links (empty-state CTA,
+       popular-search chips). */
+    drawer.addEventListener('click', function (e) {
+      var link = e.target && e.target.closest ? e.target.closest('a[data-drawer-close][href]') : null;
+      if (link) window.location.assign(link.href);
+    });
+  })();
+
+  (function () {
+    /* Order note — debounced save through the cart API. The same delegated
+       listener serves the drawer and the cart page, so it binds only once. */
+    if (window.ShiloCartNoteBound) return;
+    window.ShiloCartNoteBound = true;
+    var noteTimer;
+    document.addEventListener('input', function (e) {
+      var field = e.target;
+      if (!field || !field.matches || !field.matches('[data-cart-note]')) return;
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(function () {
+        if (window.ShiloCart && typeof window.ShiloCart.updateNote === 'function') {
+          window.ShiloCart.updateNote(field.value);
+        }
+      }, 500);
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "מגירת עגלה",
+  "settings": [
+    {
+      "type": "text",
+      "id": "final_price_note",
+      "label": "הערה מעל כפתור התשלום",
+      "info": "מוצגת מתחת לסכום הביניים במגירת העגלה.",
+      "default": "מחיר סופי בקופה, כולל דמי משלוח ומיסים"
+    }
+  ]
+}
+{% endschema %}

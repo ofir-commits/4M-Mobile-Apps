@@ -1,0 +1,122 @@
+{%- comment -%}
+  Renders the variant option picker + the variant JSON the product JS reads.
+
+  Usage: {% render 'product-variant-picker', product: product, section_id: section.id %}
+  Params:
+    product    {Object} product (required)
+    section_id {String} section id (required — keeps input names/ids unique)
+
+  Control choice per option:
+    - up to 8 short values  → .variant-pill radios (fast, thumb-friendly)
+    - more than 8 values, or any value longer than 14 characters
+      (sizes 36–48, long colour names, timber lengths) → native <select>,
+      which stays usable with dozens of values and gets the OS picker on mobile.
+
+  JS contract (assets/section-main-product.js):
+    [data-variant-picker]      root
+    [data-option-position]     on every radio and every select
+    .variant-pill              wrapper the JS marks .is-unavailable
+    [data-selected-value]      echoes the chosen value in the label
+    [data-unavailable-suffix]  text appended to sold-out <option> labels
+    [data-variant-json]        full variant list
+  Renders nothing for single-variant products — they need no client logic.
+{%- endcomment -%}
+{%- unless product.has_only_default_variant -%}
+  <div class="product-variants" data-variant-picker data-section-id="{{ section_id }}">
+    {%- for option in product.options_with_values -%}
+      {%- liquid
+        assign use_select = false
+        if option.values.size > 8
+          assign use_select = true
+        else
+          assign longest = 0
+          for value in option.values
+            assign value_length = value | size
+            if value_length > longest
+              assign longest = value_length
+            endif
+          endfor
+          if longest > 14
+            assign use_select = true
+          endif
+        endif
+
+        assign option_name = 'options-' | append: section_id | append: '-' | append: option.position
+        assign select_id = 'Option-' | append: section_id | append: '-' | append: option.position
+
+        comment
+          option.name comes from the product in the Shopify admin. Shopify's own
+          default for an unnamed option is the literal 'Title', and merchants
+          routinely leave 'Color' / 'Size' / 'Material' as typed by an app or an
+          import — so a Hebrew product page showed "Title:" and "Size:". Relabel
+          off the handleized name the way sections/footer.liquid relabels policies,
+          sharing products.facets.filters with the facet sidebar so צבע/מידה cannot
+          drift between the two places a shopper sees them. option.name stays as
+          the fallback, which is what carries a name the owner already typed in
+          Hebrew. The option VALUES below are merchant data and are never mapped.
+        endcomment
+        assign option_handle = option.name | handleize | replace: '-', '_'
+        assign option_label_key = 'products.facets.filters.' | append: option_handle
+        assign option_label = option_label_key | t
+        if option_label contains 'Translation missing'
+          assign option_label = option.name
+        endif
+      -%}
+
+      {%- if use_select -%}
+        <div class="product-variants__option">
+          <label class="field__label" for="{{ select_id }}">
+            {{ option_label | escape }}:
+            <span data-selected-value>{{ option.selected_value | escape }}</span>
+          </label>
+          <div class="select-wrap">
+            <select
+              class="select"
+              id="{{ select_id }}"
+              name="{{ option_name }}"
+              data-option-position="{{ option.position }}"
+            >
+              {%- for value in option.values -%}
+                <option
+                  value="{{ value | escape }}"
+                  data-label="{{ value | escape }}"
+                  {% if option.selected_value == value %}selected{% endif %}
+                >
+                  {{- value -}}
+                </option>
+              {%- endfor -%}
+            </select>
+            {% render 'icon', name: 'chevron-down', size: 18 %}
+          </div>
+        </div>
+      {%- else -%}
+        <fieldset class="product-variants__option">
+          <legend class="field__label">
+            {{ option_label | escape }}:
+            <span data-selected-value>{{ option.selected_value | escape }}</span>
+          </legend>
+          <div class="variant-pills">
+            {%- for value in option.values -%}
+              {%- assign input_id = 'Option-' | append: section_id | append: '-' | append: option.position | append: '-' | append: forloop.index -%}
+              <label class="variant-pill" for="{{ input_id }}">
+                <input
+                  type="radio"
+                  id="{{ input_id }}"
+                  name="{{ option_name }}"
+                  value="{{ value | escape }}"
+                  data-option-position="{{ option.position }}"
+                  {% if option.selected_value == value %}checked{% endif %}
+                >
+                <span>{{ value }}</span>
+              </label>
+            {%- endfor -%}
+          </div>
+        </fieldset>
+      {%- endif -%}
+    {%- endfor -%}
+
+    <span hidden data-unavailable-suffix>{{ 'products.product.unavailable' | t }}</span>
+
+    <script type="application/json" data-variant-json>{{ product.variants | json }}</script>
+  </div>
+{%- endunless -%}

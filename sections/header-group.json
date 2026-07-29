@@ -1,0 +1,53 @@
+{
+  "type": "header",
+  "name": "Header group",
+  "sections": {
+    "announcement-bar": {
+      "type": "announcement-bar",
+      "settings": {
+        "show_whatsapp": true,
+        "rotate_speed": 6
+      },
+      "blocks": {
+        "a1": {
+          "type": "announcement",
+          "settings": {
+            "text": "איסוף עצמי מהחנות בקרית ענבים ללא עלות · אפשר להזמין מראש בטלפון",
+            "icon": "store",
+            "link": ""
+          }
+        },
+        "a2": {
+          "type": "announcement",
+          "settings": {
+            "text": "יותר מ-30 שנה בענף הבנייה - ייעוץ מקצועי בטלפון 02-534-3422",
+            "icon": "headset",
+            "link": "/pages/contact"
+          }
+        },
+        "a3": {
+          "type": "announcement",
+          "settings": {
+            "text": "אנשי מקצוע? הזמינו רשימת מקטים שלמה בלחיצה אחת",
+            "icon": "list",
+            "link": "/pages/quick-order"
+          }
+        }
+      },
+      "block_order": ["a1", "a2", "a3"]
+    },
+    "header": {
+      "type": "header",
+      "settings": {
+        "menu": "shilo-2026-main",
+        "enable_sticky": true,
+        "show_account": true,
+        "show_utility_bar": true,
+        "utility_message": "משלוח חינם בהזמנה מעל",
+        "contact_page": "contact",
+        "mega_all_label": "לכל הקטגוריה"
+      }
+    }
+  },
+  "order": ["announcement-bar", "header"]
+}

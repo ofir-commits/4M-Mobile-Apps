@@ -1,0 +1,350 @@
+{{ 'section-quick-order.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'quick-order.js' | asset_url }}" defer="defer"></script>
+
+<div class="section{% if section.settings.alt_background %} section--alt{% endif %}">
+  <div class="container">
+    <div class="quick-order">
+      <header class="quick-order__intro">
+        {%- if section.settings.eyebrow != blank -%}
+          <span class="text-eyebrow">{{ section.settings.eyebrow }}</span>
+        {%- endif -%}
+        <h1 class="quick-order__title">{{ section.settings.heading }}</h1>
+        {%- if section.settings.subheading != blank -%}
+          <p class="text-lead">{{ section.settings.subheading }}</p>
+        {%- endif -%}
+      </header>
+
+      <quick-order-form
+        class="quick-order__app"
+        data-quick-order
+        data-currency="{{ cart.currency.iso_code }}"
+      >
+        <div class="quick-order__tabs" role="tablist" aria-label="{{ section.settings.heading | escape }}">
+          <button
+            type="button"
+            class="quick-order__tab is-active"
+            role="tab"
+            id="QuickOrderTab-rows"
+            aria-selected="true"
+            aria-controls="QuickOrderPanel-rows"
+            data-quick-order-tab="rows"
+          >
+            {% render 'icon', name: 'list', size: 18 %}
+            <span>{{ section.settings.tab_rows_label }}</span>
+          </button>
+          <button
+            type="button"
+            class="quick-order__tab"
+            role="tab"
+            id="QuickOrderTab-paste"
+            aria-selected="false"
+            aria-controls="QuickOrderPanel-paste"
+            data-quick-order-tab="paste"
+          >
+            {% render 'icon', name: 'clipboard', size: 18 %}
+            <span>{{ section.settings.tab_paste_label }}</span>
+          </button>
+        </div>
+
+        {%- comment -%} ---------- Row-by-row entry ---------- {%- endcomment -%}
+        <div
+          class="quick-order__panel"
+          id="QuickOrderPanel-rows"
+          role="tabpanel"
+          aria-labelledby="QuickOrderTab-rows"
+          data-quick-order-panel="rows"
+        >
+          <div class="quick-order__table" role="table">
+            <div class="quick-order__thead" role="row">
+              <span role="columnheader">{{ section.settings.label_sku }}</span>
+              <span role="columnheader">{{ section.settings.label_match }}</span>
+              <span role="columnheader">{{ section.settings.label_qty }}</span>
+              <span role="columnheader" class="quick-order__col-total">{{ section.settings.label_total }}</span>
+              <span role="columnheader"><span class="visually-hidden">{{ section.settings.label_remove }}</span></span>
+            </div>
+            <div class="quick-order__rows" data-quick-order-rows></div>
+          </div>
+
+          <button type="button" class="btn btn--ghost btn--sm quick-order__add-row" data-quick-order-add-row>
+            {% render 'icon', name: 'plus', size: 16 %}
+            {{ section.settings.add_row_label }}
+          </button>
+        </div>
+
+        {%- comment -%} ---------- Bulk paste ---------- {%- endcomment -%}
+        <div
+          class="quick-order__panel"
+          id="QuickOrderPanel-paste"
+          role="tabpanel"
+          aria-labelledby="QuickOrderTab-paste"
+          data-quick-order-panel="paste"
+          hidden
+        >
+          <div class="field">
+            <label class="field__label" for="QuickOrderPaste">{{ section.settings.paste_label }}</label>
+            <textarea
+              id="QuickOrderPaste"
+              class="field__textarea quick-order__paste"
+              rows="9"
+              dir="ltr"
+              placeholder="{{ section.settings.paste_placeholder | escape }}"
+              data-quick-order-paste
+            ></textarea>
+            <p class="text-meta">{{ section.settings.paste_help }}</p>
+          </div>
+          <button type="button" class="btn btn--outline" data-quick-order-parse>
+            {% render 'icon', name: 'search', size: 17 %}
+            {{ section.settings.parse_label }}
+          </button>
+        </div>
+
+        <div class="quick-order__status" role="status" aria-live="polite" data-quick-order-status></div>
+
+        <footer class="quick-order__footer">
+          <div class="quick-order__summary">
+            <span class="text-meta" data-quick-order-count>{{ section.settings.empty_summary }}</span>
+            <strong class="quick-order__grand" data-quick-order-grand></strong>
+          </div>
+          <div class="quick-order__actions">
+            <button type="button" class="btn btn--ghost" data-quick-order-clear>
+              {{ section.settings.clear_label }}
+            </button>
+            <button type="button" class="btn btn--lg" data-quick-order-submit disabled>
+              {% render 'icon', name: 'cart-add', size: 19 %}
+              {{ section.settings.submit_label }}
+            </button>
+          </div>
+        </footer>
+
+        <template data-quick-order-row-template>
+          <div class="quick-order__row" role="row" data-quick-order-row>
+            <div class="quick-order__cell quick-order__cell--sku" role="cell">
+              <input
+                type="text"
+                class="field__input quick-order__sku"
+                dir="ltr"
+                autocomplete="off"
+                spellcheck="false"
+                data-quick-order-sku
+                aria-label="{{ section.settings.label_sku | escape }}"
+              >
+            </div>
+            <div class="quick-order__cell quick-order__cell--match" role="cell" data-quick-order-match></div>
+            <div class="quick-order__cell quick-order__cell--qty" role="cell">
+              <div class="qty qty--sm">
+                <button type="button" class="qty__btn" data-quick-order-step="-1" aria-label="הפחתת כמות">
+                  {% render 'icon', name: 'minus', size: 15 %}
+                </button>
+                <input
+                  type="number"
+                  class="qty__input"
+                  value="1"
+                  min="1"
+                  inputmode="numeric"
+                  data-quick-order-qty
+                  aria-label="{{ section.settings.label_qty | escape }}"
+                >
+                <button type="button" class="qty__btn" data-quick-order-step="1" aria-label="הוספת כמות">
+                  {% render 'icon', name: 'plus', size: 15 %}
+                </button>
+              </div>
+            </div>
+            <div class="quick-order__cell quick-order__cell--total" role="cell" data-quick-order-line-total></div>
+            <div class="quick-order__cell quick-order__cell--remove" role="cell">
+              <button type="button" class="btn-icon" data-quick-order-remove aria-label="{{ section.settings.label_remove | escape }}">
+                {% render 'icon', name: 'trash', size: 18 %}
+              </button>
+            </div>
+          </div>
+        </template>
+      </quick-order-form>
+
+      {%- if section.settings.show_help -%}
+        <aside class="quick-order__help card card--pad">
+          <h2 class="h5">{{ section.settings.help_heading }}</h2>
+          <div class="rte fs-sm">{{ section.settings.help_text }}</div>
+          <div class="quick-order__help-actions">
+            {%- if settings.store_phone != blank -%}
+              <a class="btn btn--outline btn--sm" href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}">
+                {% render 'icon', name: 'phone', size: 16 %}
+                <span dir="ltr">{{ settings.store_phone }}</span>
+              </a>
+            {%- endif -%}
+            {%- if settings.store_whatsapp != blank -%}
+              {%- liquid
+                assign wa = settings.store_whatsapp
+                unless wa contains 'http'
+                  assign wa_digits = wa | remove: '+' | remove: '-' | remove: ' '
+                  assign wa = 'https://wa.me/' | append: wa_digits
+                endunless
+              -%}
+              <a class="btn btn--outline btn--sm" href="{{ wa }}" target="_blank" rel="noopener">
+                {% render 'icon', name: 'whatsapp', size: 16 %}
+                <span>{{ section.settings.help_whatsapp_label }}</span>
+              </a>
+            {%- endif -%}
+          </div>
+        </aside>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "הזמנה מהירה לפי מקט",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "שורת פתיחה קטנה",
+      "default": "לאנשי מקצוע וקבלנים"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "הזמנה מהירה לפי מקט"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "כותרת משנה",
+      "default": "יש לכם רשימת מקטים? הקלידו או הדביקו אותה כאן, ואנחנו נמלא את העגלה בשבילכם - בלי לחפש מוצר-מוצר."
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "תוויות"
+    },
+    {
+      "type": "text",
+      "id": "tab_rows_label",
+      "label": "לשונית שורות",
+      "default": "שורה-שורה"
+    },
+    {
+      "type": "text",
+      "id": "tab_paste_label",
+      "label": "לשונית הדבקה",
+      "default": "הדבקת רשימה"
+    },
+    {
+      "type": "text",
+      "id": "label_sku",
+      "label": "עמודת מקט",
+      "default": "מקט / ברקוד"
+    },
+    {
+      "type": "text",
+      "id": "label_match",
+      "label": "עמודת מוצר",
+      "default": "מוצר"
+    },
+    {
+      "type": "text",
+      "id": "label_qty",
+      "label": "עמודת כמות",
+      "default": "כמות"
+    },
+    {
+      "type": "text",
+      "id": "label_total",
+      "label": "עמודת סה\"כ",
+      "default": "סה\"כ"
+    },
+    {
+      "type": "text",
+      "id": "label_remove",
+      "label": "הסרת שורה",
+      "default": "הסרת השורה"
+    },
+    {
+      "type": "text",
+      "id": "add_row_label",
+      "label": "כפתור הוספת שורה",
+      "default": "הוספת שורה"
+    },
+    {
+      "type": "text",
+      "id": "paste_label",
+      "label": "כותרת שדה ההדבקה",
+      "default": "רשימת מקטים"
+    },
+    {
+      "type": "text",
+      "id": "paste_placeholder",
+      "label": "טקסט רמז",
+      "default": "9315891440981, 2\n28245742, 1\n36050333 5"
+    },
+    {
+      "type": "text",
+      "id": "paste_help",
+      "label": "הסבר קצר",
+      "default": "מקט אחד בכל שורה. אפשר להוסיף כמות אחרי פסיק, טאב או רווח. אם לא צוינה כמות - נניח יחידה אחת."
+    },
+    {
+      "type": "text",
+      "id": "parse_label",
+      "label": "כפתור עיבוד הרשימה",
+      "default": "אתרו את המוצרים"
+    },
+    {
+      "type": "text",
+      "id": "clear_label",
+      "label": "כפתור ניקוי",
+      "default": "ניקוי הטופס"
+    },
+    {
+      "type": "text",
+      "id": "submit_label",
+      "label": "כפתור הוספה לעגלה",
+      "default": "הוספת הכל לעגלה"
+    },
+    {
+      "type": "text",
+      "id": "empty_summary",
+      "label": "טקסט כשאין פריטים",
+      "default": "עדיין לא נבחרו פריטים"
+    },
+    {
+      "type": "header",
+      "content": "תיבת עזרה"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_help",
+      "label": "הצגת תיבת עזרה",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "help_heading",
+      "label": "כותרת תיבת העזרה",
+      "default": "לא מצאתם מקט?"
+    },
+    {
+      "type": "richtext",
+      "id": "help_text",
+      "label": "טקסט תיבת העזרה",
+      "default": "<p>אפשר לחפש גם לפי ברקוד. אם מקט מסוים לא נמצא בקטלוג - שלחו לנו את הרשימה בוואטסאפ או התקשרו, ונשלים לכם אותה מהמחסן.</p>"
+    },
+    {
+      "type": "text",
+      "id": "help_whatsapp_label",
+      "label": "כפתור וואטסאפ",
+      "default": "שליחת רשימה בוואטסאפ"
+    }
+  ],
+  "presets": [
+    {
+      "name": "הזמנה מהירה לפי מקט"
+    }
+  ]
+}
+{% endschema %}

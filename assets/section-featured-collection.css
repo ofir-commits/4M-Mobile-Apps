@@ -1,0 +1,83 @@
+/* =========================================================
+   Shilo Pro — Featured collection (v2 "Clarity")
+   Section-specific layout only. The cards, header, grid and
+   rail primitives all live in base.css.
+   - Mobile: horizontal snap rail (.scroll-row wins)
+   - Desktop: N-up grid (.grid--N wins), or rail via setting
+   ========================================================= */
+
+/* ---------- Heading + live product count ---------- */
+.featured-collection__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+}
+
+.featured-collection__count {
+  position: relative;
+  inset-block-start: 1px;
+}
+
+/* Hard rule: every tap target >= 44px. */
+.featured-collection .section-header__link {
+  min-block-size: 44px;
+}
+
+/* ---------- Row: rail below 750px ----------
+   The element also carries .grid, whose 2-column template would fight
+   the rail's column auto-flow, so it is dropped at rail widths. */
+.featured-collection__row {
+  scroll-padding-inline: var(--page-gutter);
+}
+
+@media (max-width: 749px) {
+  .featured-collection__row {
+    grid-template-columns: none;
+  }
+}
+
+/* ---------- Row: grid from 750px ----------
+   .grid--N supplies the columns; the rail's scroll behaviour is undone
+   so hover lift and card shadows are not clipped. */
+@media (min-width: 750px) {
+  .featured-collection__row:not(.featured-collection__row--rail) {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    gap: clamp(0.85rem, 1.4vw, 1.35rem);
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding-block-end: 0;
+    padding-inline: 0;
+    margin-inline: 0;
+  }
+
+  /* Rail on desktop too: N cards fit, the next one peeks in. */
+  .featured-collection__row--rail {
+    --fc-rail-gap: clamp(0.85rem, 1.4vw, 1.25rem);
+    grid-template-columns: none;
+    gap: var(--fc-rail-gap);
+    grid-auto-columns: calc(
+      (100% - var(--fc-rail-gap) * (var(--fc-columns, 5) - 1) - 3rem) / var(--fc-columns, 5)
+    );
+  }
+}
+
+/* ---------- Promo band ----------
+   A soft amber wash, never a saturated amber block: white product cards
+   stay the brightest thing in the band. */
+.featured-collection--highlight {
+  background-color: rgba(var(--color-highlight-rgb), 0.07);
+  border-block: 1px solid rgba(var(--color-highlight-rgb), 0.34);
+}
+
+/* Re-tint the eyebrow for the promo band: the decorative marker takes the
+   highlight amber, the label itself takes the readable amber ink so the
+   text keeps AA contrast on a light wash. */
+.featured-collection--highlight .section-header__eyebrow {
+  color: var(--color-warning);
+}
+
+.featured-collection--highlight .section-header__eyebrow::before {
+  background: var(--color-highlight);
+}

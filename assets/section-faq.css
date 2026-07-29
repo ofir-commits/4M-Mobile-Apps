@@ -1,0 +1,34 @@
+/* FAQ — accordion list + sticky contact card */
+
+.faq { display: grid; gap: clamp(1.25rem, 2.5vw, 2rem); }
+
+.faq__intro { max-inline-size: 62ch; }
+.faq__title { margin-block-end: 0.55rem; }
+
+.faq__body { display: grid; gap: clamp(1.25rem, 2.5vw, 2rem); }
+
+@media (min-width: 990px) {
+  .faq__body {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+  .faq__contact { position: sticky; inset-block-start: 6rem; }
+}
+
+.faq__list {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  padding-inline: clamp(1rem, 2vw, 1.5rem);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.faq__item:last-child { border-block-end: none; }
+
+.faq__item .accordion__trigger { gap: 1.25rem; font-size: 1.02rem; }
+.faq__item .accordion__content { max-inline-size: 72ch; }
+
+.faq__contact { display: flex; flex-direction: column; gap: 0.7rem; }
+.faq__contact-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.faq__hours { margin-block-start: 0.15rem; line-height: 1.7; }

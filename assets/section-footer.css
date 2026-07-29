@@ -1,0 +1,425 @@
+/* =========================================================
+   Shilo Pro — Footer (v2 "Clarity")
+   The ink slab that closes every page: brand + one-line story,
+   two link columns, the real yard details, an optional
+   newsletter row and a quiet legal / payment bar.
+
+   Texture comes from .blueprint-field (base.css). Components
+   (.btn, .field__input, .blueprint-underline, .container) are
+   consumed as-is — only this section's layout and the on-ink
+   contrast fixes live in this file.
+
+   Contrast measured against --color-ink at its shipped value:
+     --color-on-ink              ≈ 15.8:1
+     rgba(255,255,255,.66)       ≈  8.2:1   (muted copy floor)
+     --color-accent              ≈  3.5:1   → decorative marks only
+   ========================================================= */
+
+.footer {
+  /* .blueprint-field draws its grid with --blueprint-line, an ink tint that is
+     invisible on ink. Re-key it to a white hairline, kept under 5% so the
+     grid reads as texture rather than as a table. */
+  --blueprint-line: rgba(255, 255, 255, 0.045);
+  --footer-muted: rgba(255, 255, 255, 0.66);
+  --footer-hairline: rgba(255, 255, 255, 0.12);
+  --footer-well: rgba(255, 255, 255, 0.05);
+}
+
+/* .blueprint-field ships the light canvas colour; the footer keeps the ink slab. */
+.footer.blueprint-field { background-color: var(--color-ink); }
+
+.footer a { text-decoration: none; }
+
+.footer__main { padding-block: clamp(2.5rem, 4vw, 4rem) clamp(1.75rem, 3vw, 2.75rem); }
+
+/* ---------- Column grid ---------- */
+.footer__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.75rem, 4vw, 2.5rem) clamp(1.25rem, 4vw, 2rem);
+}
+
+.footer__col { min-inline-size: 0; }
+
+/* Mobile: brand and contact take the full width, the two menus sit side by
+   side so the whole footer stays inside about one thumb-scroll. */
+.footer__col--brand,
+.footer__col--contact { grid-column: 1 / -1; }
+
+/* Tablet: the brand block becomes a banner row above three equal columns —
+   a 2×2 split leaves a dead corner next to the longest menu. */
+@media (min-width: 750px) {
+  .footer__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.75rem 2.5rem;
+  }
+  .footer__col--brand { max-inline-size: 620px; }
+  .footer__col--contact { grid-column: auto; }
+}
+
+@media (min-width: 990px) {
+  .footer__grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 2rem clamp(1.75rem, 3vw, 3.25rem);
+  }
+  .footer__col--brand {
+    grid-column: auto;
+    max-inline-size: none;
+  }
+}
+
+/* ---------- Brand column ---------- */
+/* The logo sits on a white plate, so the shop's real artwork shows.
+   The previous treatment — filter: brightness(0) invert(1) — turns every
+   OPAQUE pixel solid white; the shop's logo is a non-transparent 500×100 PNG,
+   so the whole rectangle rendered as a blank white block. A white plate is
+   correct for both logo families: transparent art reads on white, and an
+   opaque white-background export merges into the plate with no visible seam
+   (any off-white plate colour would frame that seam). AA is unaffected — the
+   plate is decorative; all adjacent copy still sits on the ink slab. */
+.footer__logo {
+  display: inline-block;
+  line-height: 0;
+  padding: 0.55rem 0.8rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-base);
+}
+
+/* Merchant opt-out for a light/white transparent logo that is designed to sit
+   directly on dark surfaces. */
+.footer__logo--bare {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.footer__logo-img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+.footer__brand-name {
+  font-family: var(--font-heading-family);
+  font-weight: var(--font-heading-weight);
+  font-size: 1.45rem;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.footer__about {
+  margin-block-start: 1.15rem;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--footer-muted);
+  max-inline-size: 46ch;
+}
+
+.footer__about p { margin: 0; }
+.footer__about > * + * { margin-block-start: 0.6em; }
+
+/* .rte links are accent-red, which is only 3.5:1 on ink. */
+.footer__about a {
+  color: var(--color-on-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer__about a:hover { color: #fff; }
+
+.footer__social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-block-start: 1.4rem;
+}
+
+.footer__social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  border: 1px solid var(--footer-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--footer-well);
+  color: #fff;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.footer__social-link:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+/* ---------- Column titles ---------- */
+/* .blueprint-underline supplies the accent rule and its spacing. */
+.footer__title {
+  font-size: 1rem;
+  letter-spacing: 0;
+  margin-block-end: 1rem;
+}
+
+/* ---------- Link lists ---------- */
+.footer__links {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer__link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-block: 0.25rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--footer-muted);
+  transition: color var(--duration-fast) ease;
+}
+
+.footer__link:hover {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ---------- Contact column ---------- */
+.footer__contact {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer__contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-block-size: 44px;
+  padding-block: 0.45rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--footer-muted);
+}
+
+.footer__contact-item .icon {
+  flex-shrink: 0;
+  margin-block-start: 0.22em;
+  color: var(--color-accent);
+}
+
+a.footer__contact-item { transition: color var(--duration-fast) ease; }
+a.footer__contact-item:hover { color: #fff; }
+
+.footer__contact-item--phone { align-items: center; }
+.footer__contact-item--phone .icon { margin-block-start: 0; }
+
+.footer__phone {
+  font-family: var(--font-heading-family);
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--color-on-ink);
+  transition: color var(--duration-fast) ease;
+}
+a.footer__contact-item:hover .footer__phone { color: #fff; }
+
+.footer__hours { line-height: 1.7; }
+
+/* WhatsApp keeps its own brand green so it is recognised instantly;
+   ink-coloured label holds it at ~9:1. */
+.footer__whatsapp {
+  --btn-bg: #25D366;
+  --btn-color: var(--color-ink);
+  --btn-shadow: none;
+  inline-size: 100%;
+  margin-block-start: 1.2rem;
+  /* Tighter than a page CTA so the label holds one line inside a footer column. */
+  padding-inline: 1.1rem;
+  font-size: 0.96rem;
+}
+
+.footer__whatsapp:hover {
+  --btn-bg: #25D366;
+  filter: brightness(0.93);
+  box-shadow: none;
+}
+
+@media (min-width: 990px) {
+  .footer__whatsapp { inline-size: auto; }
+}
+
+/* ---------- Newsletter row (off by default — the homepage owns one) ---------- */
+.footer__newsletter {
+  border-block-start: 1px solid var(--footer-hairline);
+  padding-block: clamp(1.5rem, 2.5vw, 2.25rem);
+}
+
+.footer__newsletter-inner {
+  display: grid;
+  gap: 1.15rem;
+  align-items: center;
+}
+
+@media (min-width: 990px) {
+  .footer__newsletter-inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem 3rem;
+  }
+}
+
+.footer__newsletter-copy { min-inline-size: 0; }
+
+.footer__newsletter-heading {
+  font-size: 1.28rem;
+  margin: 0;
+}
+
+.footer__newsletter-text {
+  margin: 0.35rem 0 0;
+  font-size: 0.92rem;
+  color: var(--footer-muted);
+}
+
+.footer__newsletter-form {
+  inline-size: 100%;
+  max-inline-size: 520px;
+}
+
+.footer__newsletter-row { display: grid; gap: 0.6rem; }
+
+@media (min-width: 560px) {
+  .footer__newsletter-row { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+.footer__newsletter-input {
+  min-inline-size: 0;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+.footer__newsletter-input:hover { border-color: rgba(255, 255, 255, 0.45); }
+.footer__newsletter-input::placeholder { color: rgba(255, 255, 255, 0.6); opacity: 1; }
+
+.footer__newsletter-btn { flex-shrink: 0; }
+
+/* Both form states are re-keyed to white on a translucent well — the shared
+   light-background palette is unreadable on ink. */
+.footer__newsletter-success {
+  justify-content: flex-start;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+.footer__newsletter-success .icon { color: #fff; }
+
+.footer__newsletter-errors {
+  margin-block-end: 0.7rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.26);
+  border-inline-start: 3px solid var(--color-accent);
+}
+.footer__newsletter-errors p { margin: 0; }
+
+/* ---------- Legal + payment bar ---------- */
+.footer__bottom {
+  border-block-start: 1px solid var(--footer-hairline);
+  padding-block: 0.65rem;
+}
+
+.footer__bottom-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 1.75rem;
+}
+
+.footer__copyright {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--footer-muted);
+}
+
+.footer__legal-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1.15rem;
+}
+
+.footer__legal-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  font-size: 0.84rem;
+  color: var(--footer-muted);
+  transition: color var(--duration-fast) ease;
+}
+
+.footer__legal-link:hover {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.footer__payments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Shopify's payment SVGs carry their own white card, so they sit on ink as-is. */
+.footer__payment-icon {
+  display: block;
+  block-size: 24px;
+  inline-size: auto;
+}
+
+@media (max-width: 749.98px) {
+  .footer__bottom { padding-block: 0.85rem 1.15rem; }
+  .footer__bottom-inner {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+  .footer__legal-list,
+  .footer__payments { justify-content: center; }
+}
+
+/* =========================================================
+   Floating contact dock
+   The .contact-dock / .contact-dock__btn / --whatsapp / --phone
+   rules live in base.css. Only placement rules are added here.
+   ========================================================= */
+
+/* Tap-to-call is a phone affordance: desktop keeps the header and footer
+   numbers instead of a floating button. */
+@media (min-width: 990px) {
+  .contact-dock__btn--phone { display: none; }
+}
+
+/* The phone button is ink-coloured, so it disappears into this ink footer once
+   the page is scrolled to the bottom. A white hairline keeps its silhouette. */
+.contact-dock__btn--phone { border: 1px solid rgba(255, 255, 255, 0.28); }
+
+/* The dock floats over the inline-end edge — exactly where the legal bar ends.
+   Reserve room for it so it never covers a link, and only do so when the dock
+   is actually switched on (browsers without :has() keep the tighter bar). */
+body:has(.contact-dock) .footer__bottom { padding-block-end: 5rem; }
+
+@media (max-width: 989.98px) {
+  /* Two stacked buttons below 990px. */
+  body:has(.contact-dock) .footer__bottom { padding-block-end: 8.5rem; }
+}
+
+/* Keep the dock clear of the iOS home indicator. */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .contact-dock { inset-block-end: calc(1rem + env(safe-area-inset-bottom)); }
+
+  @media (min-width: 990px) {
+    .contact-dock { inset-block-end: calc(1.5rem + env(safe-area-inset-bottom)); }
+  }
+}

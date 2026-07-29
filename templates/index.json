@@ -1,0 +1,515 @@
+{
+  "sections": {
+    "hero": {
+      "type": "image-banner",
+      "settings": {
+        "height": "large",
+        "overlay_opacity": 55,
+        "eyebrow": "מאז 1990 · קיבוץ קרית ענבים",
+        "heading": "חומרי בניין, כלי עבודה ואספקה טכנית - הכל במקום אחד",
+        "subheading": "יותר מ-30 שנה שאנשי מקצוע, קבלנים ובעלי בתים סומכים עלינו. 1,900 מוצרים במלאי, מהמותגים המובילים בעולם, עם ייעוץ של צוות שמכיר את השטח.",
+        "alignment": "start",
+        "show_search": true,
+        "button_1_label": "לקטלוג המלא",
+        "button_1_link": "/collections/all",
+        "button_2_label": "דברו איתנו",
+        "button_2_link": "",
+        "show_chips": true,
+        "chip_1": "30+ שנות ניסיון בענף",
+        "chip_2": "משלוחים לכל הארץ",
+        "chip_3": "ייעוץ מקצועי חינם",
+        "motion_intensity": "full",
+        "show_detail_drawing": true
+      }
+    },
+    "category_rail": {
+      "type": "category-rail",
+      "settings": {
+        "heading": "המחלקות שלנו",
+        "show_count": true,
+        "tile_style": "image"
+      },
+      "blocks": {
+        "r1": {
+          "type": "collection",
+          "settings": {
+            "collection": "כלי-עבודה",
+            "icon": "hammer"
+          }
+        },
+        "r2": {
+          "type": "collection",
+          "settings": {
+            "collection": "כלים-נטענים",
+            "icon": "battery",
+            "photo_blend": true
+          }
+        },
+        "r3": {
+          "type": "collection",
+          "settings": {
+            "collection": "שקעים-ומפסקים",
+            "icon": "bolt"
+          }
+        },
+        "r4": {
+          "type": "collection",
+          "settings": {
+            "collection": "תאורה",
+            "icon": "lightbulb"
+          }
+        },
+        "r5": {
+          "type": "collection",
+          "settings": {
+            "collection": "אינסטלציה",
+            "icon": "pipe"
+          }
+        },
+        "r6": {
+          "type": "collection",
+          "settings": {
+            "collection": "ברזים",
+            "icon": "droplet",
+            "photo_blend": true
+          }
+        },
+        "r7": {
+          "type": "collection",
+          "settings": {
+            "collection": "צבע",
+            "icon": "paint-roller",
+            "photo_blend": true
+          }
+        },
+        "r8": {
+          "type": "collection",
+          "settings": {
+            "collection": "סולמות",
+            "icon": "ladder",
+            "photo_blend": true
+          }
+        },
+        "r9": {
+          "type": "collection",
+          "settings": {
+            "collection": "ניקיון-ותחזוקת-הבית",
+            "icon": "spray"
+          }
+        },
+        "r10": {
+          "type": "collection",
+          "settings": {
+            "collection": "ציוד-טכני",
+            "icon": "hard-hat"
+          }
+        },
+        "r11": {
+          "type": "collection",
+          "settings": {
+            "collection": "קמפינג",
+            "icon": "tent"
+          }
+        },
+        "r12": {
+          "type": "collection",
+          "settings": {
+            "collection": "עץ",
+            "icon": "planks",
+            "photo_blend": true
+          }
+        }
+      },
+      "block_order": [
+        "r1",
+        "r2",
+        "r3",
+        "r4",
+        "r5",
+        "r6",
+        "r7",
+        "r8",
+        "r9",
+        "r10",
+        "r11",
+        "r12"
+      ]
+    },
+    "services": {
+      "type": "services-bar",
+      "settings": {
+        "alt_background": true
+      },
+      "blocks": {
+        "s1": {
+          "type": "service",
+          "settings": {
+            "icon": "truck",
+            "title": "משלוחים לכל הארץ",
+            "text": "אספקה עד האתר, העסק או הבית"
+          }
+        },
+        "s2": {
+          "type": "service",
+          "settings": {
+            "icon": "store",
+            "title": "איסוף עצמי מהחנות",
+            "text": "ההזמנה מחכה לכם בקרית ענבים"
+          }
+        },
+        "s3": {
+          "type": "service",
+          "settings": {
+            "icon": "headset",
+            "title": "ייעוץ מקצועי",
+            "text": "צוות עם 30+ שנות ניסיון בענף"
+          }
+        },
+        "s4": {
+          "type": "service",
+          "settings": {
+            "icon": "shield-check",
+            "title": "מותגים מקוריים בלבד",
+            "text": "אחריות מלאה מיבואן רשמי"
+          }
+        }
+      },
+      "block_order": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ]
+    },
+    "offers": {
+      "type": "featured-collection",
+      "settings": {
+        "eyebrow": "מוגבל בזמן",
+        "heading": "המבצעים שלנו",
+        "show_view_all": true,
+        "collection": "המבצעים-שלנו",
+        "products_limit": 10,
+        "columns": 5,
+        "scroll_desktop": false,
+        "highlight": true,
+        "alt_background": false
+      }
+    },
+    "departments": {
+      "type": "collection-list",
+      "settings": {
+        "eyebrow": "186 קטגוריות בקטלוג",
+        "heading": "קונים לפי מחלקה",
+        "show_view_all": true,
+        "columns": 3,
+        "feature_first": false,
+        "alt_background": true
+      },
+      "blocks": {
+        "c1": {
+          "type": "collection",
+          "settings": {
+            "collection": "כלי-עבודה"
+          }
+        },
+        "c2": {
+          "type": "collection",
+          "settings": {
+            "collection": "שקעים-ומפסקים"
+          }
+        },
+        "c3": {
+          "type": "collection",
+          "settings": {
+            "collection": "תאורה"
+          }
+        },
+        "c4": {
+          "type": "collection",
+          "settings": {
+            "collection": "ניקיון-ותחזוקת-הבית"
+          }
+        },
+        "c5": {
+          "type": "collection",
+          "settings": {
+            "collection": "כלים-נטענים"
+          }
+        },
+        "c6": {
+          "type": "collection",
+          "settings": {
+            "collection": "אינסטלציה"
+          }
+        },
+        "c7": {
+          "type": "collection",
+          "settings": {
+            "collection": "ציוד-טכני"
+          }
+        },
+        "c8": {
+          "type": "collection",
+          "settings": {
+            "collection": "סולמות"
+          }
+        },
+        "c9": {
+          "type": "collection",
+          "settings": {
+            "collection": "צבע"
+          }
+        }
+      },
+      "block_order": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8",
+        "c9"
+      ]
+    },
+    "bestsellers": {
+      "type": "featured-collection",
+      "settings": {
+        "eyebrow": "הבחירה של המקצוענים",
+        "heading": "הנמכרים ביותר",
+        "show_view_all": true,
+        "collection": "best-selling-products",
+        "products_limit": 10,
+        "columns": 5,
+        "scroll_desktop": false,
+        "alt_background": false
+      }
+    },
+    "makita": {
+      "type": "image-with-text",
+      "settings": {
+        "image": "shopify://shop_images/DTD153Z.webp",
+        "collection": "makita",
+        "media_fit": "badge",
+        "flip": false,
+        "eyebrow": "מרכז מקיטה",
+        "heading": "354 מוצרי מקיטה במחירים הזולים בישראל",
+        "text": "<p>אנחנו מחזיקים את אחד המבחרים הגדולים בארץ של כלי עבודה MAKITA - כלים נטענים, פטישונים, משחזות, מסורים, סוללות ומטענים, סטים מלאים ואביזרים נלווים. הכל מיבואן רשמי, עם אחריות מלאה וייעוץ שיתאים לכם בדיוק את הכלי לעבודה.</p>",
+        "button_label": "לכל מוצרי מקיטה",
+        "button_link": "/collections/makita",
+        "alt_background": false
+      }
+    },
+    "brands": {
+      "type": "brand-logos",
+      "settings": {
+        "heading": "המותגים שאנחנו מייצגים",
+        "alt_background": true
+      },
+      "blocks": {
+        "b1": {
+          "type": "brand",
+          "settings": {
+            "collection": "makita",
+            "name": "מקיטה MAKITA"
+          }
+        },
+        "b2": {
+          "type": "brand",
+          "settings": {
+            "collection": "פתיה"
+          }
+        },
+        "b3": {
+          "type": "brand",
+          "settings": {
+            "collection": "חגית",
+            "name": "סולמות חגית"
+          }
+        },
+        "b4": {
+          "type": "brand",
+          "settings": {
+            "collection": "אקווילה"
+          }
+        },
+        "b5": {
+          "type": "brand",
+          "settings": {
+            "collection": "רסטוליום",
+            "logo": "shopify://shop_images/logos-brands-rustoleum.jpg",
+            "name": "רסטוליום"
+          }
+        },
+        "b6": {
+          "type": "brand",
+          "settings": {
+            "collection": "מילווקי",
+            "name": "מילווקי MILWAUKEE"
+          }
+        },
+        "b7": {
+          "type": "brand",
+          "settings": {
+            "collection": "yale",
+            "name": "ייל YALE"
+          }
+        },
+        "b8": {
+          "type": "brand",
+          "settings": {
+            "collection": "איגלו",
+            "name": "איגלו IGLOO"
+          }
+        },
+        "b9": {
+          "type": "brand",
+          "settings": {
+            "collection": "בונה"
+          }
+        },
+        "b10": {
+          "type": "brand",
+          "settings": {
+            "collection": "האנטר",
+            "name": "האנטר HUNTER"
+          }
+        },
+        "b11": {
+          "type": "brand",
+          "settings": {
+            "collection": "קרשר",
+            "name": "קרשר KARCHER"
+          }
+        },
+        "b12": {
+          "type": "brand",
+          "settings": {
+            "collection": "סימנס",
+            "name": "סימנס SIEMENS"
+          }
+        },
+        "b13": {
+          "type": "brand",
+          "settings": {
+            "collection": "ניסקו",
+            "name": "ניסקו NISKO"
+          }
+        },
+        "b14": {
+          "type": "brand",
+          "settings": {
+            "collection": "grohe",
+            "name": "גרו GROHE"
+          }
+        },
+        "b15": {
+          "type": "brand",
+          "settings": {
+            "collection": "קראוס"
+          }
+        },
+        "b16": {
+          "type": "brand",
+          "settings": {
+            "collection": "פלוד"
+          }
+        },
+        "b17": {
+          "type": "brand",
+          "settings": {
+            "collection": "טמבור"
+          }
+        },
+        "b18": {
+          "type": "brand",
+          "settings": {
+            "collection": "בלאנדסטון"
+          }
+        }
+      },
+      "block_order": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b6",
+        "b7",
+        "b8",
+        "b9",
+        "b10",
+        "b11",
+        "b12",
+        "b13",
+        "b14",
+        "b15",
+        "b16",
+        "b17",
+        "b18"
+      ]
+    },
+    "new_arrivals": {
+      "type": "featured-collection",
+      "settings": {
+        "eyebrow": "הגיעו למדף",
+        "heading": "חדש בקטלוג",
+        "show_view_all": true,
+        "collection": "newest-products",
+        "products_limit": 10,
+        "columns": 5,
+        "scroll_desktop": false,
+        "alt_background": false
+      }
+    },
+    "lumber": {
+      "type": "image-with-text",
+      "settings": {
+        "collection": "עץ",
+        "flip": true,
+        "eyebrow": "מחסן העצים",
+        "heading": "עץ, לוחות וקורות - בחיתוך לפי מידה",
+        "text": "<p>במחסן העצים שלנו תמצאו עץ גושני, לוחות, קורות ופרופילים - עם חיתוך מדויק לפי המידות שאתם צריכים. הצוות מלווה אתכם משלב התכנון ועד ההעמסה על הרכב, בדיוק כמו שאנחנו עושים כאן כבר יותר מ-30 שנה.</p>",
+        "button_label": "לקטלוג העץ",
+        "button_link": "/collections/עץ",
+        "alt_background": true,
+        "media_fit": "cover"
+      }
+    },
+    "about": {
+      "type": "rich-text",
+      "settings": {
+        "eyebrow": "מי אנחנו",
+        "heading": "בית מסחר לחומרי בניין ואספקה טכנית - עם ותק של מעל 30 שנה",
+        "text": "<p>א.נ. שילו בע\"מ הוא הבית של אנשי המקצוע: חנות חומרי בניין, מחלקת אספקה טכנית ומחסן עצים, הכל במתחם אחד בקיבוץ קרית ענבים. אצלנו תמצאו את המותגים המובילים בעולם, מחירים הוגנים וצוות שמכיר כל מוצר מהשטח - לא ממחסן.</p>",
+        "button_label": "עוד עלינו",
+        "button_link": "/pages/אודות-א-נ-שילו-בעמ",
+        "width": "normal",
+        "alt_background": false
+      }
+    },
+    "newsletter_signup": {
+      "type": "newsletter",
+      "settings": {
+        "heading": "מצטרפים למועדון של שילו",
+        "text": "מבצעים בלעדיים, חידושים בקטלוג וטיפים של אנשי מקצוע - ישירות למייל.",
+        "show_privacy_note": true
+      }
+    }
+  },
+  "order": [
+    "hero",
+    "category_rail",
+    "services",
+    "offers",
+    "departments",
+    "bestsellers",
+    "makita",
+    "brands",
+    "new_arrivals",
+    "lumber",
+    "about",
+    "newsletter_signup"
+  ]
+}

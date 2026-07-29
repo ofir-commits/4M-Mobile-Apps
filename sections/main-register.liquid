@@ -1,0 +1,162 @@
+{{ 'section-customers.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign logo_width = settings.logo_width | default: 260
+  assign logo_width_2x = logo_width | times: 2
+  assign phone_href = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+-%}
+
+<section class="section auth-section">
+  <div class="container">
+    <div class="auth-shell">
+      <a class="auth-brand" href="{{ routes.root_url }}">
+        {%- if settings.logo != blank -%}
+          <img
+            class="auth-brand__img"
+            src="{{ settings.logo | image_url: width: logo_width_2x }}"
+            srcset="{{ settings.logo | image_url: width: logo_width }} 1x, {{ settings.logo | image_url: width: logo_width_2x }} 2x"
+            width="{{ logo_width }}"
+            height="{{ logo_width | divided_by: settings.logo.aspect_ratio | round }}"
+            alt="{{ settings.logo.alt | default: shop.name | escape }}"
+            loading="eager"
+          >
+        {%- else -%}
+          <span class="auth-brand__text">{{ shop.name }}</span>
+        {%- endif -%}
+      </a>
+
+      <div class="panel auth-card">
+        <header class="auth-card__head">
+          <span class="auth-card__icon" aria-hidden="true">{% render 'icon', name: 'user', size: 24 %}</span>
+          <h1 class="auth-card__title h2">{{ 'customer.register.title' | t }}</h1>
+          {%- if section.settings.subtext != blank -%}
+            <p class="auth-card__subtext">{{ section.settings.subtext | escape }}</p>
+          {%- endif -%}
+        </header>
+
+        {%- form 'create_customer', class: 'customer-form', novalidate: 'novalidate' -%}
+          {%- if form.errors -%}
+            <div class="errors" role="alert" tabindex="-1">
+              <ul>
+                {%- for field in form.errors -%}
+                  <li>
+                    {%- if field == 'form' -%}
+                      {{ form.errors.messages[field] }}
+                    {%- else -%}
+                      {{ form.errors.translated_fields[field] }} - {{ form.errors.messages[field] }}
+                    {%- endif -%}
+                  </li>
+                {%- endfor -%}
+              </ul>
+            </div>
+          {%- endif -%}
+
+          <div class="form__row">
+            <div class="field">
+              <label class="field__label" for="RegisterFirstName">{{ 'customer.register.first_name' | t }}</label>
+              <input
+                class="field__input"
+                type="text"
+                id="RegisterFirstName"
+                name="customer[first_name]"
+                value="{{ form.first_name }}"
+                autocomplete="given-name"
+              >
+            </div>
+            <div class="field">
+              <label class="field__label" for="RegisterLastName">{{ 'customer.register.last_name' | t }}</label>
+              <input
+                class="field__input"
+                type="text"
+                id="RegisterLastName"
+                name="customer[last_name]"
+                value="{{ form.last_name }}"
+                autocomplete="family-name"
+              >
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="RegisterEmail">
+              {{ 'customer.register.email' | t }} <span class="required" aria-hidden="true">*</span>
+            </label>
+            <input
+              class="field__input"
+              type="email"
+              id="RegisterEmail"
+              name="customer[email]"
+              value="{{ form.email }}"
+              autocomplete="email"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              dir="ltr"
+              required
+              {% if form.errors contains 'email' %}aria-invalid="true"{% endif %}
+            >
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="RegisterPassword">
+              {{ 'customer.register.password' | t }} <span class="required" aria-hidden="true">*</span>
+            </label>
+            <input
+              class="field__input"
+              type="password"
+              id="RegisterPassword"
+              name="customer[password]"
+              autocomplete="new-password"
+              minlength="5"
+              required
+              {% if form.errors contains 'password' %}aria-invalid="true"{% endif %}
+            >
+          </div>
+
+          <button type="submit" class="btn btn--full auth-submit">
+            {{ 'customer.register.submit' | t }}
+          </button>
+        {%- endform -%}
+
+        <div class="auth-footer">
+          <span>{{ 'customer.register.have_account' | t }}</span>
+          <a class="link" href="{{ routes.account_login_url }}">{{ 'customer.register.log_in' | t }}</a>
+        </div>
+      </div>
+
+      {%- if section.settings.support_text != blank and settings.store_phone != blank -%}
+        <div class="auth-support">
+          <p class="auth-support__text">{{ section.settings.support_text | escape }}</p>
+          <a class="auth-support__link" href="tel:{{ phone_href }}">
+            {% render 'icon', name: 'phone', size: 16 %}
+            <span class="auth-support__ltr">{{ settings.store_phone }}</span>
+          </a>
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "פתיחת חשבון",
+  "settings": [
+    {
+      "type": "text",
+      "id": "subtext",
+      "label": "משפט מתחת לכותרת",
+      "default": "חשבון אישי חוסך זמן: מעקב הזמנות, כתובות שמורות והזמנה חוזרת בלחיצה."
+    },
+    {
+      "type": "header",
+      "content": "שורת תמיכה"
+    },
+    {
+      "type": "text",
+      "id": "support_text",
+      "label": "טקסט",
+      "info": "מוצג מתחת לכרטיס יחד עם מספר הטלפון מהגדרות התבנית. השאירו ריק כדי להסתיר.",
+      "default": "לקוחות עסקיים ומעוניינים בהסדר תשלום? דברו איתנו:"
+    }
+  ]
+}
+{% endschema %}

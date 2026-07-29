@@ -1,0 +1,510 @@
+{{ 'section-main-product.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'section-main-product.js' | asset_url }}" defer="defer"></script>
+
+{%- liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign bc_collection = collection | default: product.collections.first
+  assign low_stock_threshold = settings.low_stock_threshold | default: 5
+
+  assign on_sale = false
+  if current_variant.compare_at_price > current_variant.price
+    assign on_sale = true
+  endif
+  assign saved_amount = current_variant.compare_at_price | minus: current_variant.price | money
+
+  # Link the vendor to its own collection when the shop has one, otherwise fall
+  # back to the automatic /collections/vendors listing.
+  assign vendor_url = product.vendor | url_for_vendor
+  assign vendor_handle = product.vendor | handleize
+  assign vendor_collection = collections[vendor_handle]
+  if vendor_collection != empty and vendor_collection.products_count > 0
+    assign vendor_url = vendor_collection.url
+  endif
+
+  # WhatsApp deep link: the shopper's message opens with the product they are
+  # looking at, so the office can answer without asking "which item?".
+  assign wa_raw = settings.store_whatsapp | strip
+  assign wa_href = ''
+  if wa_raw != blank and section.settings.show_whatsapp
+    assign wa_scheme = wa_raw | slice: 0, 4
+    if wa_scheme == 'http'
+      assign wa_base = wa_raw
+    else
+      assign wa_digits = wa_raw | remove: '+' | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+      assign wa_base = 'https://wa.me/' | append: wa_digits
+    endif
+
+    assign product_link = request.origin | append: product.url
+    assign wa_intro = section.settings.whatsapp_message | default: 'שלום, יש לי שאלה על המוצר'
+    assign wa_message = wa_intro | append: ' ' | append: product.title
+    if current_variant.sku != blank
+      assign wa_message = wa_message | append: ' (מק"ט ' | append: current_variant.sku | append: ')'
+    endif
+    assign wa_message = wa_message | append: ' — ' | append: product_link
+    assign wa_query = wa_message | url_encode
+
+    if wa_base contains '?'
+      assign wa_href = wa_base | append: '&text=' | append: wa_query
+    else
+      assign wa_href = wa_base | append: '?text=' | append: wa_query
+    endif
+  endif
+
+  assign phone_raw = settings.store_phone | strip
+  assign phone_href = phone_raw | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+
+  # An empty white card would read as a mistake, so the details card only
+  # renders when it has something to hold.
+  assign has_details = false
+  if product.description != blank or section.settings.shipping_info != blank or section.blocks.size > 0
+    assign has_details = true
+  endif
+-%}
+
+<section
+  class="product-page"
+  id="MainProduct-{{ section.id }}"
+  data-main-product
+  data-section-id="{{ section.id }}"
+  data-low-stock="{{ low_stock_threshold }}"
+>
+  <div class="container">
+    {%- if settings.show_breadcrumbs -%}
+      <nav class="breadcrumbs product-page__breadcrumbs" aria-label="{{ 'general.breadcrumbs.label' | t }}">
+        <a href="{{ routes.root_url }}">{{ 'general.breadcrumbs.home' | t }}</a>
+        <span class="breadcrumbs__sep" aria-hidden="true">{% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}</span>
+        {%- if bc_collection != blank and bc_collection.handle != 'frontpage' -%}
+          <a href="{{ bc_collection.url }}">{{ bc_collection.title | escape }}</a>
+          <span class="breadcrumbs__sep" aria-hidden="true">{% render 'icon', name: 'chevron-right', size: 14, class: 'icon--dir' %}</span>
+        {%- endif -%}
+        <span class="breadcrumbs__current" aria-current="page">{{ product.title | escape }}</span>
+      </nav>
+    {%- endif -%}
+
+    <div class="product-layout">
+      <div class="product-layout__media">
+        {% render 'vendor-badge', product: product, size: 84, class: 'product-page__importer' %}
+        {% render 'product-media-gallery',
+          product: product,
+          section_id: section.id,
+          enable_zoom: section.settings.enable_zoom
+        %}
+      </div>
+
+      <div class="product-layout__info product-info" id="ProductInfo-{{ section.id }}">
+        <div class="product-info__card card">
+          <div class="product-info__header">
+            <div class="product-info__top">
+              {%- if section.settings.show_vendor and product.vendor != blank -%}
+                <a class="product-info__vendor" href="{{ vendor_url }}">
+                  {% render 'icon', name: 'tag', size: 14 %}
+                  <span>{{ product.vendor | escape }}</span>
+                </a>
+              {%- else -%}
+                <span></span>
+              {%- endif -%}
+
+              {%- if section.settings.show_share -%}
+                <button
+                  type="button"
+                  class="btn-icon product-info__share"
+                  data-share-button
+                  data-share-url="{{ request.origin }}{{ product.url }}"
+                  data-share-title="{{ product.title | escape }}"
+                  aria-label="{{ 'products.product.share' | t }}"
+                  title="{{ 'general.share.copy_link' | t }}"
+                >
+                  {% render 'icon', name: 'share', size: 18 %}
+                  <span class="product-info__share-label">{{ 'general.share.share' | t }}</span>
+                </button>
+              {%- endif -%}
+            </div>
+
+            <h1 class="product-info__title">{{ product.title | escape }}</h1>
+
+            {%- capture product_labels -%}{% render 'product-labels', product: product, limit: 4 %}{%- endcapture -%}
+            {%- if product_labels contains 'badge' -%}
+              <div class="product-info__labels">{{ product_labels }}</div>
+            {%- endif -%}
+
+            {%- if section.settings.show_sku -%}
+              <p class="product-info__sku" data-sku-wrap {% if current_variant.sku == blank %}hidden{% endif %}>
+                {{ 'products.product.sku' | t }}:
+                <span class="product-info__sku-value" dir="ltr" data-sku>{{ current_variant.sku }}</span>
+              </p>
+            {%- endif -%}
+          </div>
+
+          <div class="product-info__pricing">
+            <div class="product-info__price-row">
+              <div id="ProductPrice-{{ section.id }}" role="status">
+                {% render 'price', product: product, variant: current_variant, large: true %}
+              </div>
+              <span class="price__save" data-save-badge {% unless on_sale %}hidden{% endunless %}>
+                {{ 'products.product.save_amount' | t: amount: saved_amount }}
+              </span>
+            </div>
+
+            {%- if section.settings.show_stock or cart.taxes_included or shop.shipping_policy.body != blank -%}
+            <div class="product-info__meta-row">
+              {%- if section.settings.show_stock -%}
+                <div class="product-info__stock" data-stock-status>
+                  {%- if current_variant.available -%}
+                    {%- if current_variant.inventory_management != blank
+                      and current_variant.inventory_quantity > 0
+                      and current_variant.inventory_quantity <= low_stock_threshold -%}
+                      <span class="stock-dot stock-dot--low">
+                        {{- 'products.product.low_stock' | t: count: current_variant.inventory_quantity -}}
+                      </span>
+                    {%- else -%}
+                      <span class="stock-dot">{{ 'products.product.in_stock' | t }}</span>
+                    {%- endif -%}
+                  {%- else -%}
+                    <span class="stock-dot stock-dot--out">{{ 'products.product.out_of_stock' | t }}</span>
+                  {%- endif -%}
+                </div>
+              {%- endif -%}
+
+              {%- if cart.taxes_included or shop.shipping_policy.body != blank -%}
+                <p class="product-info__tax-note">
+                  {%- if cart.taxes_included -%}
+                    {{ 'products.product.include_taxes' | t }}
+                  {%- endif %}
+                  {% if shop.shipping_policy.body != blank -%}
+                    {{ 'products.product.shipping_policy_html' | t: link: shop.shipping_policy.url }}
+                  {%- endif -%}
+                </p>
+              {%- endif -%}
+            </div>
+            {%- endif -%}
+          </div>
+
+          {% render 'product-variant-picker', product: product, section_id: section.id %}
+
+          {%- comment -%}
+            A slice of this catalogue is published without a price. Offering
+            "add to cart" on a ₪0 item hands it over for free, so unpriced
+            products get a quote request instead of a buy button.
+          {%- endcomment -%}
+          {%- if current_variant.price == 0 -%}
+            {% render 'request-price', product: product, variant: current_variant %}
+          {%- else -%}
+            {% render 'buy-buttons',
+              product: product,
+              section_id: section.id,
+              sticky: section.settings.enable_sticky_atc
+            %}
+          {%- endif -%}
+
+          {% render 'back-in-stock', product: product, variant: current_variant %}
+
+          {%- if section.settings.show_trust -%}
+            <div class="product-trust">
+              {%- if section.settings.trust_shipping != blank -%}
+                <div class="trust-row product-trust__item">
+                  {% render 'icon', name: 'truck', size: 20 %}
+                  <span>{{ section.settings.trust_shipping | escape }}</span>
+                </div>
+              {%- endif -%}
+              {%- if section.settings.trust_pickup != blank -%}
+                <div class="trust-row product-trust__item">
+                  {% render 'icon', name: 'store', size: 20 %}
+                  <span>{{ section.settings.trust_pickup | escape }}</span>
+                </div>
+              {%- endif -%}
+              {%- if section.settings.trust_warranty != blank -%}
+                <div class="trust-row product-trust__item">
+                  {% render 'icon', name: 'shield-check', size: 20 %}
+                  <span>{{ section.settings.trust_warranty | escape }}</span>
+                </div>
+              {%- endif -%}
+              {%- if phone_raw != blank -%}
+                <div class="trust-row product-trust__item">
+                  {% render 'icon', name: 'headset', size: 20 %}
+                  <a class="product-trust__phone" href="tel:{{ phone_href }}">
+                    {{ section.settings.trust_phone_label | escape }}
+                    <span dir="ltr">{{ phone_raw | escape }}</span>
+                  </a>
+                </div>
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+
+          {%- if wa_href != blank -%}
+            <a
+              class="product-whatsapp"
+              href="{{ wa_href }}"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="product-whatsapp__icon" aria-hidden="true">
+                {% render 'icon', name: 'whatsapp', size: 20 %}
+              </span>
+              <span class="product-whatsapp__text">
+                <strong>{{ section.settings.whatsapp_title | escape }}</strong>
+                <span>{{ section.settings.whatsapp_subtitle | escape }}</span>
+              </span>
+              {% render 'icon', name: 'chevron-right', size: 18, class: 'icon--dir product-whatsapp__arrow' %}
+              <span class="visually-hidden">{{ 'general.accessibility.link_opens_new_tab' | t }}</span>
+            </a>
+          {%- endif -%}
+        </div>
+
+        {%- if has_details -%}
+        <div class="product-info__details card">
+          <div class="accordion product-info__accordions">
+            {%- if product.description != blank -%}
+              <details class="accordion__item" open>
+                <summary class="accordion__trigger">
+                  <span>{{ 'products.product.description' | t }}</span>
+                  {% render 'icon', name: 'chevron-down', size: 18 %}
+                </summary>
+                <div class="accordion__content rte">{{ product.description }}</div>
+              </details>
+            {%- endif -%}
+
+            {%- if section.settings.shipping_info != blank -%}
+              <details class="accordion__item">
+                <summary class="accordion__trigger">
+                  <span>{{ section.settings.shipping_title | escape }}</span>
+                  {% render 'icon', name: 'chevron-down', size: 18 %}
+                </summary>
+                <div class="accordion__content rte">{{ section.settings.shipping_info }}</div>
+              </details>
+            {%- endif -%}
+
+            {%- for block in section.blocks -%}
+              {%- case block.type -%}
+                {%- when 'accordion' -%}
+                  {%- if block.settings.title != blank -%}
+                    <details class="accordion__item" {{ block.shopify_attributes }}>
+                      <summary class="accordion__trigger">
+                        <span>{{ block.settings.title | escape }}</span>
+                        {% render 'icon', name: 'chevron-down', size: 18 %}
+                      </summary>
+                      <div class="accordion__content rte">
+                        {{ block.settings.content }}
+                        {{ block.settings.liquid }}
+                      </div>
+                    </details>
+                  {%- endif -%}
+                {%- when 'custom_liquid' -%}
+                  <div class="product-info__custom-liquid" {{ block.shopify_attributes }}>
+                    {{ block.settings.liquid }}
+                  </div>
+              {%- endcase -%}
+            {%- endfor -%}
+          </div>
+        </div>
+        {%- endif -%}
+
+        {%- comment -%} Localized strings for section-main-product.js {%- endcomment -%}
+        <script type="application/json" data-product-strings>
+          {
+            "addToCart": {{ 'products.product.add_to_cart' | t | json }},
+            "soldOut": {{ 'products.product.sold_out' | t | json }},
+            "unavailable": {{ 'products.product.unavailable' | t | json }},
+            "inStock": {{ 'products.product.in_stock' | t | json }},
+            "lowStockOne": {{ 'products.product.low_stock' | t: count: 1 | json }},
+            "lowStockOther": {{ 'products.product.low_stock' | t: count: 987 | replace: '987', '[count]' | json }},
+            "outOfStock": {{ 'products.product.out_of_stock' | t | json }},
+            "regularPrice": {{ 'products.price.regular_price' | t | json }},
+            "salePrice": {{ 'products.price.sale_price' | t | json }},
+            "saveAmount": {{ 'products.product.save_amount' | t: amount: '[amount]' | json }},
+            "inCartOne": {{ 'products.product.quantity_in_cart' | t: count: 1 | json }},
+            "inCartOther": {{ 'products.product.quantity_in_cart' | t: count: 987 | replace: '987', '[count]' | json }},
+            "copied": {{ 'general.share.copied' | t | json }}
+          }
+        </script>
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%}
+    The zoom overlay is deliberately rendered outside .product-layout: the two
+    sticky columns each open a stacking context, and a .modal nested inside one
+    would paint below the drawer scrim.
+  {%- endcomment -%}
+  {% render 'product-media-gallery',
+    product: product,
+    section_id: section.id,
+    enable_zoom: section.settings.enable_zoom,
+    part: 'zoom'
+  %}
+</section>
+
+{% schema %}
+{
+  "name": "עמוד מוצר",
+  "settings": [
+    {
+      "type": "header",
+      "content": "פרטי מוצר"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_vendor",
+      "label": "הצגת מותג",
+      "info": "מקושר לקטגוריית המותג כשקיימת כזו",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sku",
+      "label": "הצגת מק\"ט",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_stock",
+      "label": "הצגת סטטוס מלאי",
+      "info": "סף המלאי הנמוך נקבע בהגדרות הערכה הכלליות",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_share",
+      "label": "הצגת כפתור שיתוף",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "גלריה"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_zoom",
+      "label": "לחיצה על התמונה מגדילה אותה",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "קנייה"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_sticky_atc",
+      "label": "פס \"הוספה לעגלה\" צף",
+      "info": "מופיע ברגע שכפתור ההוספה יוצא מהמסך",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "שורות אמון"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_trust",
+      "label": "הצגת שורות אמון",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "trust_shipping",
+      "label": "שורת משלוח",
+      "default": "משלוח לכל הארץ"
+    },
+    {
+      "type": "text",
+      "id": "trust_pickup",
+      "label": "שורת איסוף עצמי",
+      "default": "איסוף עצמי מקרית ענבים"
+    },
+    {
+      "type": "text",
+      "id": "trust_warranty",
+      "label": "שורת אחריות",
+      "default": "אחריות יבואן רשמי"
+    },
+    {
+      "type": "text",
+      "id": "trust_phone_label",
+      "label": "שורת ייעוץ טלפוני",
+      "info": "מספר הטלפון נלקח מהגדרות החנות",
+      "default": "ייעוץ טלפוני"
+    },
+    {
+      "type": "header",
+      "content": "וואטסאפ"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_whatsapp",
+      "label": "הצגת קישור לוואטסאפ",
+      "info": "נבנה מקישור הוואטסאפ שבהגדרות החנות, עם שם המוצר וכתובתו בגוף ההודעה",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "whatsapp_title",
+      "label": "כותרת",
+      "default": "יש שאלה על המוצר?"
+    },
+    {
+      "type": "text",
+      "id": "whatsapp_subtitle",
+      "label": "כותרת משנה",
+      "default": "כתבו לנו בוואטסאפ ונחזור אליכם עם תשובה"
+    },
+    {
+      "type": "text",
+      "id": "whatsapp_message",
+      "label": "פתיחת ההודעה",
+      "info": "שם המוצר, המק\"ט והקישור מתווספים אוטומטית בסוף",
+      "default": "שלום, יש לי שאלה על המוצר"
+    },
+    {
+      "type": "header",
+      "content": "מידע נוסף"
+    },
+    {
+      "type": "text",
+      "id": "shipping_title",
+      "label": "כותרת האקורדיון",
+      "default": "שאלות ומשלוחים"
+    },
+    {
+      "type": "richtext",
+      "id": "shipping_info",
+      "label": "תוכן האקורדיון",
+      "default": "<p>משלוח לכל הארץ תוך 1–4 ימי עסקים, עד הבית, העסק או אתר הבנייה. איסוף עצמי מהמחסן בקיבוץ קרית ענבים ללא עלות — ההזמנה מחכה ארוזה ומוכנה.</p><p>לא בטוחים איזה דגם מתאים? התקשרו 02-534-3422 ונכוון אתכם. ניתן להחזיר מוצר באריזתו המקורית עד 14 יום מקבלתו, בהתאם לתקנות הגנת הצרכן.</p>"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "accordion",
+      "name": "אקורדיון מותאם",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "כותרת",
+          "default": "מפרט טכני"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "label": "תוכן"
+        },
+        {
+          "type": "liquid",
+          "id": "liquid",
+          "label": "קוד Liquid (אופציונלי)",
+          "info": "לתוכן דינמי, למשל metafields"
+        }
+      ]
+    },
+    {
+      "type": "custom_liquid",
+      "name": "Liquid מותאם",
+      "settings": [
+        {
+          "type": "liquid",
+          "id": "liquid",
+          "label": "קוד Liquid"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,56 @@
+{%- comment -%}
+  Floating contact dock — WhatsApp always, tap-to-call on phones only.
+
+  Rendered from layout/theme.liquid behind settings.show_contact_dock and
+  renders nothing at all when neither contact detail is filled in.
+  Component styles: .contact-dock* in assets/base.css.
+  Placement / visibility rules: assets/section-footer.css.
+
+  Details come from the theme settings:
+    settings.store_whatsapp — full link (wa.link / wa.me) or a phone number
+    settings.store_phone    — display number, dialled with separators stripped
+{%- endcomment -%}
+
+{%- liquid
+  assign wa_raw = settings.store_whatsapp | strip
+  assign phone_raw = settings.store_phone | strip
+
+  assign wa_href = ''
+  if wa_raw != blank
+    assign wa_scheme = wa_raw | slice: 0, 4
+    if wa_scheme == 'http'
+      assign wa_href = wa_raw
+    else
+      assign wa_digits = wa_raw | remove: '+' | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+      assign wa_href = 'https://wa.me/' | append: wa_digits
+    endif
+  endif
+
+  assign phone_href = phone_raw | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
+-%}
+
+{%- if wa_href != blank or phone_raw != blank -%}
+  <div class="contact-dock" role="group" aria-label="{{ 'general.contact.title' | t }}">
+    {%- if wa_href != blank -%}
+      <a
+        class="contact-dock__btn contact-dock__btn--whatsapp"
+        href="{{ wa_href }}"
+        target="_blank"
+        rel="noopener"
+        aria-label="{{ 'general.contact.whatsapp_cta' | t }} - {{ 'general.accessibility.link_opens_new_tab' | t }}"
+      >
+        {% render 'icon', name: 'whatsapp', size: 26 %}
+      </a>
+    {%- endif -%}
+
+    {%- if phone_raw != blank -%}
+      <a
+        class="contact-dock__btn contact-dock__btn--phone"
+        href="tel:{{ phone_href }}"
+        aria-label="{{ 'general.contact.phone' | t }}: {{ phone_raw | escape }}"
+      >
+        {% render 'icon', name: 'phone', size: 24 %}
+      </a>
+    {%- endif -%}
+  </div>
+{%- endif -%}

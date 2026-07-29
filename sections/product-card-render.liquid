@@ -1,0 +1,16 @@
+{%- comment -%}
+  Headless helper section. Fetched by assets/recently-viewed.js as
+  /products/<handle>?section_id=product-card-render and scraped for its
+  .product-card node, so recently-viewed rows reuse the exact same card
+  markup as the rest of the store instead of a second, drifting copy.
+
+  Not meant to be added to a template by hand — it has no preset.
+{%- endcomment -%}
+{% render 'product-card', product: product, lazy: true %}
+
+{% schema %}
+{
+  "name": "כרטיס מוצר (פנימי)",
+  "settings": []
+}
+{% endschema %}

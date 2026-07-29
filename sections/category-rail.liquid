@@ -1,0 +1,272 @@
+{{ 'section-category-rail.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  comment
+    Compact department rail - the fastest path into the 186 collections.
+    Uses merchant-picked blocks; falls back to the store's own collections
+    so the section is never empty when it is first added.
+  endcomment
+  assign tile_count = 0
+  for block in section.blocks
+    if block.settings.collection != blank
+      assign tile_count = tile_count | plus: 1
+    endif
+  endfor
+-%}
+
+{%- if tile_count > 0 or collections.size > 0 -%}
+  <section
+    id="CategoryRail-{{ section.id }}"
+    class="section section--tight category-rail{% if section.settings.alt_background %} section--alt{% endif %}"
+  >
+    <div class="container">
+      {%- if section.settings.heading != blank -%}
+        <div class="section-header category-rail__header">
+          <div class="section-header__text">
+            <h2 class="section-header__heading h3">{{ section.settings.heading | escape }}</h2>
+          </div>
+          <a class="section-header__link" href="{{ routes.collections_url }}">
+            {{ 'sections.collection_list.view_all' | t }}
+            {% render 'icon', name: 'arrow-right', size: 17 %}
+          </a>
+        </div>
+      {%- endif -%}
+
+      {%- comment -%}
+        The track carries .scroll-row and .grid/.grid--6 from base.css:
+        section-category-rail.css picks the rail under 750px and lets
+        .grid--6 supply the columns above it (4 up, then 6 up at 1100px).
+      {%- endcomment -%}
+      <ul class="category-rail__track scroll-row grid grid--6" role="list">
+        {%- if tile_count > 0 -%}
+          {%- for block in section.blocks -%}
+            {%- assign rail_collection = block.settings.collection -%}
+            {%- if rail_collection != blank -%}
+              {%- liquid
+                assign tile_title = block.settings.title | default: rail_collection.title
+                assign tile_image = block.settings.image | default: rail_collection.image | default: rail_collection.featured_image
+                assign ph_index = forloop.index0 | modulo: 6 | plus: 1
+                assign ph_name = 'collection-' | append: ph_index
+
+                # An explicit per-block image always wins: if the owner ever supplies
+                # a matched set of designed tiles, dropping them in is enough.
+                assign use_icon = false
+                if section.settings.tile_style == 'icon' and block.settings.image == blank
+                  assign use_icon = true
+                endif
+              -%}
+              <li class="category-rail__item reveal" {{ block.shopify_attributes }}>
+                <a class="category-rail__tile" href="{{ rail_collection.url }}">
+                  {%- if use_icon -%}
+                    {%- comment -%}
+                      The rejected path, kept as a working fallback. Icon tiles are
+                      uniform by construction - the theme draws every one - which is
+                      why they were tried: the twelve department images were never
+                      produced as a set (eight designed 1080x1080 tiles with a colour
+                      baked in, three raw product shots) and no stylesheet can repaint
+                      the inside of a JPEG. The owner rejected the glyphs on looks and
+                      asked for the photographs back, so tile_style now defaults to
+                      "image" and the row is unified by frame instead: a sunken well
+                      that is ours, with the photo inset into a small white window
+                      framed identically on all twelve (mechanism and the arithmetic
+                      ruling out filters and blend modes are in
+                      section-category-rail.css). Falling back to each collection's
+                      first product photo is still not an option - two pairs of
+                      departments share a first product and several of the rest are
+                      unrepresentative (תאורה resolves to a memorial candle, כלי עבודה
+                      to a file called Screenshot2024-07-18004225.png).
+                    {%- endcomment -%}
+                    <span class="category-rail__media category-rail__media--icon" aria-hidden="true">
+                      {% render 'icon', name: block.settings.icon, size: 34 %}
+                    </span>
+                  {%- else -%}
+                    {%- comment -%}
+                      One flat coloured plate (token --color-tile-bg) with the image
+                      contained inside it. The plate wraps the image box because
+                      base.css absolutely positions .media > img with inset: 0, so
+                      padding on .media itself would not inset the photo. photo_blend
+                      marks opaque product photos shot on white: multiply melts that
+                      white into the plate colour (see section-category-rail.css and
+                      docs/STORE-HEALTH.md). sizes stays a step below the tile's
+                      viewport share because the window is ~84% of the plate.
+                    {%- endcomment -%}
+                    <span class="category-rail__plate{% if block.settings.photo_blend %} category-rail__plate--blend{% endif %}" aria-hidden="true">
+                      <span class="category-rail__media media media--square media--contain">
+                        {%- if tile_image != blank -%}
+                          <img
+                            src="{{ tile_image | image_url: width: 400 }}"
+                            srcset="{{ tile_image | image_url: width: 200 }} 200w, {{ tile_image | image_url: width: 300 }} 300w, {{ tile_image | image_url: width: 400 }} 400w, {{ tile_image | image_url: width: 600 }} 600w"
+                            sizes="(min-width: 1100px) 11vw, (min-width: 750px) 17vw, 28vw"
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            width="{{ tile_image.width }}"
+                            height="{{ tile_image.height }}"
+                          >
+                        {%- else -%}
+                          {{ ph_name | placeholder_svg_tag: 'placeholder-svg' }}
+                        {%- endif -%}
+                      </span>
+                    </span>
+                  {%- endif -%}
+                  <span class="category-rail__body">
+                    <span class="category-rail__title">{{ tile_title | escape }}</span>
+                    {%- if section.settings.show_count -%}
+                      <span class="chip chip--count category-rail__count">
+                        {{- 'products.facets.product_count_simple' | t: count: rail_collection.products_count -}}
+                      </span>
+                    {%- endif -%}
+                  </span>
+                </a>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- else -%}
+          {%- for rail_collection in collections limit: 12 -%}
+            {%- liquid
+              assign tile_image = rail_collection.image | default: rail_collection.featured_image
+              assign ph_index = forloop.index0 | modulo: 6 | plus: 1
+              assign ph_name = 'collection-' | append: ph_index
+            -%}
+            <li class="category-rail__item reveal">
+              <a class="category-rail__tile" href="{{ rail_collection.url }}">
+                {%- comment -%}
+                  Same plate markup as the merchant-block loop above, so a store
+                  that has never configured blocks gets the identical row (without
+                  per-tile blend flags, which only blocks can carry).
+                {%- endcomment -%}
+                <span class="category-rail__plate" aria-hidden="true">
+                  <span class="category-rail__media media media--square media--contain">
+                    {%- if tile_image != blank -%}
+                      <img
+                        src="{{ tile_image | image_url: width: 400 }}"
+                        srcset="{{ tile_image | image_url: width: 200 }} 200w, {{ tile_image | image_url: width: 300 }} 300w, {{ tile_image | image_url: width: 400 }} 400w, {{ tile_image | image_url: width: 600 }} 600w"
+                        sizes="(min-width: 1100px) 11vw, (min-width: 750px) 17vw, 28vw"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        width="{{ tile_image.width }}"
+                        height="{{ tile_image.height }}"
+                      >
+                    {%- else -%}
+                      {{ ph_name | placeholder_svg_tag: 'placeholder-svg' }}
+                    {%- endif -%}
+                  </span>
+                </span>
+                <span class="category-rail__body">
+                  <span class="category-rail__title">{{ rail_collection.title | escape }}</span>
+                  {%- if section.settings.show_count -%}
+                    <span class="chip chip--count category-rail__count">
+                      {{- 'products.facets.product_count_simple' | t: count: rail_collection.products_count -}}
+                    </span>
+                  {%- endif -%}
+                </span>
+              </a>
+            </li>
+          {%- endfor -%}
+        {%- endif -%}
+      </ul>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "רצועת מחלקות",
+  "max_blocks": 12,
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "המחלקות שלנו"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_count",
+      "label": "הצגת מספר המוצרים בכל מחלקה",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "tile_style",
+      "label": "מה מוצג באריח",
+      "info": "תמונת הקטגוריה מוצגת בתוך מסגרת אחידה, כך שכל האריחים נראים אותו דבר גם כשהתמונות עצמן שונות. תמונה מותאמת בבלוק עצמו עוקפת את שתי האפשרויות.",
+      "options": [
+        { "value": "image", "label": "תמונת הקטגוריה" },
+        { "value": "icon", "label": "אייקון (גיבוי)" }
+      ],
+      "default": "image"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "collection",
+      "name": "קטגוריה",
+      "settings": [
+        {
+          "type": "collection",
+          "id": "collection",
+          "label": "קטגוריה"
+        },
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "אייקון",
+          "options": [
+            { "value": "hammer", "label": "כלי עבודה / פטיש" },
+            { "value": "wrench", "label": "מפתח" },
+            { "value": "battery", "label": "כלים נטענים / סוללה" },
+            { "value": "bolt", "label": "חשמל" },
+            { "value": "lightbulb", "label": "תאורה" },
+            { "value": "pipe", "label": "אינסטלציה / צינור" },
+            { "value": "droplet", "label": "ברזים / מים" },
+            { "value": "paint-roller", "label": "צבע" },
+            { "value": "ladder", "label": "סולמות" },
+            { "value": "spray", "label": "ניקיון" },
+            { "value": "hard-hat", "label": "ציוד טכני" },
+            { "value": "tent", "label": "קמפינג" },
+            { "value": "planks", "label": "עץ ולוחות" },
+            { "value": "ruler", "label": "מדידה" },
+            { "value": "package", "label": "אחר / חבילה" },
+            { "value": "shield-check", "label": "אבטחה" },
+            { "value": "key", "label": "מנעולים" },
+            { "value": "store", "label": "כללי" }
+          ],
+          "default": "package"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "תמונה מותאמת",
+          "info": "אופציונלי. אם לא נבחרה - תוצג תמונת הקטגוריה."
+        },
+        {
+          "type": "checkbox",
+          "id": "photo_blend",
+          "label": "צילום מוצר על רקע לבן - מיזוג לרקע",
+          "info": "סמנו כשהתמונה היא צילום מוצר על רקע לבן: הרקע הלבן ייבלע בצבע האריח והמוצר יישאר. אל תסמנו לגרפיקות מעוצבות עם צבע רקע משלהן - המיזוג יכהה אותן.",
+          "default": false
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "כותרת מותאמת",
+          "info": "אופציונלי. אם נשארה ריקה - יוצג שם הקטגוריה."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "רצועת מחלקות"
+    }
+  ]
+}
+{% endschema %}

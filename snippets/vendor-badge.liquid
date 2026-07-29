@@ -1,0 +1,70 @@
+{%- comment -%}
+  Official-importer seal for a product, resolved by its vendor.
+
+  The live (Empire) site shows these seals through the paid labels app —
+  e.g. Makita's ארגנטולס "יבואן רשמי" seal and Milwaukee's DELCO seal. Here
+  they are theme settings: up to three image+vendor-list pairs under
+  "חותמות יבואן רשמי". A product whose vendor matches one of the
+  comma-separated names (trimmed, case-insensitive) gets that seal.
+
+  Accepts:
+    product {Object} product (required)
+    size    {Number} rendered CSS px (square), default 52
+    class   {String} positioning class from the caller
+{%- endcomment -%}
+{%- liquid
+  assign vb_size = size | default: 52
+  assign vb_2x = vb_size | times: 2
+  assign vb_vendor = product.vendor | strip | downcase
+  assign vb_image = blank
+
+  if vb_vendor != blank
+    if settings.importer_badge_1 != blank and settings.importer_badge_1_vendors != blank
+      assign vb_names = settings.importer_badge_1_vendors | downcase | split: ','
+      for vb_name in vb_names
+        assign vb_clean = vb_name | strip
+        if vb_clean == vb_vendor
+          assign vb_image = settings.importer_badge_1
+          break
+        endif
+      endfor
+    endif
+    if vb_image == blank and settings.importer_badge_2 != blank and settings.importer_badge_2_vendors != blank
+      assign vb_names = settings.importer_badge_2_vendors | downcase | split: ','
+      for vb_name in vb_names
+        assign vb_clean = vb_name | strip
+        if vb_clean == vb_vendor
+          assign vb_image = settings.importer_badge_2
+          break
+        endif
+      endfor
+    endif
+    if vb_image == blank and settings.importer_badge_3 != blank and settings.importer_badge_3_vendors != blank
+      assign vb_names = settings.importer_badge_3_vendors | downcase | split: ','
+      for vb_name in vb_names
+        assign vb_clean = vb_name | strip
+        if vb_clean == vb_vendor
+          assign vb_image = settings.importer_badge_3
+          break
+        endif
+      endfor
+    endif
+  endif
+  assign vb_alt = vb_image.alt
+  if vb_alt == blank
+    assign vb_alt = 'products.product.official_importer' | t
+  endif
+-%}
+{%- if vb_image != blank -%}
+  <img
+    class="vendor-badge {{ class }}"
+    style="--vendor-badge-size: {{ vb_size }}px"
+    src="{{ vb_image | image_url: width: vb_2x }}"
+    srcset="{{ vb_image | image_url: width: vb_size }} 1x, {{ vb_image | image_url: width: vb_2x }} 2x"
+    alt="{{ vb_alt | escape }}"
+    loading="lazy"
+    decoding="async"
+    width="{{ vb_size }}"
+    height="{{ vb_size }}"
+  >
+{%- endif -%}

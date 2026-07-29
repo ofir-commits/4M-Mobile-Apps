@@ -1,0 +1,125 @@
+{%- comment -%}
+  Renders a blog article card. Consumes .card / .media / .badge from base.css —
+  section-blog.css only adds the card's internal layout.
+
+  Usage: {% render 'article-card', article: article, lazy: true, class: 'reveal' %}
+  Params:
+    article  {Object}  article object. Pass blank to render onboarding
+                       placeholder content (theme editor / demo).
+    lazy     {Boolean} lazy-load the image (default: eager)
+    class    {String}  extra CSS classes on the card root
+    featured {Boolean} bigger "featured" layout — image beside content on desktop
+{%- endcomment -%}
+
+{%- liquid
+  assign excerpt_words = 20
+  if featured
+    assign excerpt_words = 34
+  endif
+
+  assign loading_attr = 'eager'
+  if lazy
+    assign loading_attr = 'lazy'
+  endif
+
+  assign heading_tag = 'h3'
+  if featured
+    assign heading_tag = 'h2'
+  endif
+
+  assign is_demo = false
+  if article == blank
+    assign is_demo = true
+  endif
+-%}
+
+<article class="card article-card{% if featured %} article-card--featured{% endif %}{% if class != blank %} {{ class }}{% endif %}">
+  <div class="media media--landscape article-card__media">
+    {%- if is_demo == false and article.image -%}
+      {%- if featured -%}
+        <img
+          src="{{ article.image | image_url: width: 1100 }}"
+          srcset="
+            {{ article.image | image_url: width: 600 }} 600w,
+            {{ article.image | image_url: width: 850 }} 850w,
+            {{ article.image | image_url: width: 1100 }} 1100w,
+            {{ article.image | image_url: width: 1500 }} 1500w
+          "
+          sizes="(min-width: 750px) 58vw, calc(100vw - 2rem)"
+          width="{{ article.image.width }}"
+          height="{{ article.image.height }}"
+          alt="{{ article.image.alt | default: article.title | escape }}"
+          loading="{{ loading_attr }}"
+          decoding="async"
+        >
+      {%- else -%}
+        <img
+          src="{{ article.image | image_url: width: 720 }}"
+          srcset="
+            {{ article.image | image_url: width: 360 }} 360w,
+            {{ article.image | image_url: width: 540 }} 540w,
+            {{ article.image | image_url: width: 720 }} 720w,
+            {{ article.image | image_url: width: 900 }} 900w
+          "
+          sizes="(min-width: 990px) 430px, (min-width: 600px) 50vw, calc(100vw - 2rem)"
+          width="{{ article.image.width }}"
+          height="{{ article.image.height }}"
+          alt="{{ article.image.alt | default: article.title | escape }}"
+          loading="{{ loading_attr }}"
+          decoding="async"
+        >
+      {%- endif -%}
+    {%- elsif featured -%}
+      {{ 'lifestyle-1' | placeholder_svg_tag: 'placeholder-svg' }}
+    {%- else -%}
+      {{ 'lifestyle-2' | placeholder_svg_tag: 'placeholder-svg' }}
+    {%- endif -%}
+  </div>
+
+  <div class="article-card__content">
+    {%- if featured -%}
+      <span class="badge badge--soft article-card__flag">{{ 'blog.general.latest_post' | t }}</span>
+    {%- endif -%}
+
+    <div class="article-card__meta">
+      <span class="article-card__meta-item">
+        {% render 'icon', name: 'clock', size: 14 %}
+        {%- if is_demo -%}
+          {{ 'now' | date: format: 'month_day_year' }}
+        {%- else -%}
+          {{ article.published_at | time_tag: format: 'month_day_year' }}
+        {%- endif -%}
+      </span>
+      <span class="article-card__meta-item">
+        {%- if is_demo -%}
+          {{ 'blog.article.written_by' | t: author: shop.name }}
+        {%- else -%}
+          {{ 'blog.article.written_by' | t: author: article.author }}
+        {%- endif -%}
+      </span>
+    </div>
+
+    <{{ heading_tag }} class="article-card__title">
+      {%- if is_demo -%}
+        <a href="{{ blog.url | default: routes.root_url }}">{{ 'blog.general.onboarding_title' | t }}</a>
+      {%- else -%}
+        <a href="{{ article.url }}">{{ article.title | escape }}</a>
+      {%- endif -%}
+    </{{ heading_tag }}>
+
+    <p class="article-card__excerpt">
+      {%- if is_demo -%}
+        כאן תופיע פתיחת הכתבה - טיפים מקצועיים, השוואות בין מוצרים והמלצות של הצוות שלנו, ישר מהמחסן ומחצר העצים בקיבוץ קרית ענבים.
+      {%- else -%}
+        {{ article.excerpt_or_content | strip_html | truncatewords: excerpt_words }}
+      {%- endif -%}
+    </p>
+
+    <div class="article-card__footer">
+      <span class="article-card__more">
+        {{ 'blog.general.read_more' | t }}
+        {% render 'icon', name: 'arrow-right', size: 16, class: 'icon--dir' %}
+      </span>
+    </div>
+  </div>
+</article>

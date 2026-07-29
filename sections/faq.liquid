@@ -1,0 +1,189 @@
+{{ 'section-faq.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign qa_blocks = section.blocks | where: 'type', 'question'
+-%}
+
+<div class="section{% if section.settings.alt_background %} section--alt{% endif %}">
+  <div class="container">
+    <div class="faq">
+      <header class="faq__intro">
+        {%- if section.settings.eyebrow != blank -%}
+          <span class="text-eyebrow">{{ section.settings.eyebrow }}</span>
+        {%- endif -%}
+        {%- if section.settings.heading != blank -%}
+          <h2 class="faq__title">{{ section.settings.heading }}</h2>
+        {%- endif -%}
+        {%- if section.settings.subheading != blank -%}
+          <p class="text-lead">{{ section.settings.subheading }}</p>
+        {%- endif -%}
+      </header>
+
+      <div class="faq__body">
+        {%- if qa_blocks.size > 0 -%}
+          <div class="accordion faq__list">
+            {%- for block in qa_blocks -%}
+              <details class="accordion__item faq__item" {{ block.shopify_attributes }}{% if forloop.first and section.settings.open_first %} open{% endif %}>
+                <summary class="accordion__trigger">
+                  <span>{{ block.settings.question }}</span>
+                  {% render 'icon', name: 'chevron-down', size: 20, class: 'icon-chevron' %}
+                </summary>
+                <div class="accordion__content rte">{{ block.settings.answer }}</div>
+              </details>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+
+        {%- if section.settings.show_contact_card -%}
+          <aside class="faq__contact panel">
+            <h3 class="h5">{{ section.settings.contact_heading }}</h3>
+            {%- if section.settings.contact_text != blank -%}
+              <p class="text-meta">{{ section.settings.contact_text }}</p>
+            {%- endif -%}
+            <div class="faq__contact-actions">
+              {%- if settings.store_phone != blank -%}
+                <a class="btn btn--sm" href="tel:{{ settings.store_phone | remove: '-' | remove: ' ' }}">
+                  {% render 'icon', name: 'phone', size: 16 %}
+                  <span dir="ltr">{{ settings.store_phone }}</span>
+                </a>
+              {%- endif -%}
+              {%- if settings.store_whatsapp != blank -%}
+                {%- liquid
+                  assign wa = settings.store_whatsapp
+                  unless wa contains 'http'
+                    assign wa_digits = wa | remove: '+' | remove: '-' | remove: ' '
+                    assign wa = 'https://wa.me/' | append: wa_digits
+                  endunless
+                -%}
+                <a class="btn btn--outline btn--sm" href="{{ wa }}" target="_blank" rel="noopener">
+                  {% render 'icon', name: 'whatsapp', size: 16 %}
+                  <span>{{ section.settings.contact_whatsapp_label }}</span>
+                </a>
+              {%- endif -%}
+            </div>
+            {%- if settings.store_hours != blank -%}
+              <p class="faq__hours text-meta">{{ settings.store_hours | newline_to_br }}</p>
+            {%- endif -%}
+          </aside>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</div>
+
+{%- comment -%}
+  FAQPage structured data — makes these answers eligible for Google rich results.
+{%- endcomment -%}
+{%- if qa_blocks.size > 0 -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "inLanguage": "he-IL",
+      "mainEntity": [
+        {%- for block in qa_blocks -%}
+          {
+            "@type": "Question",
+            "name": {{ block.settings.question | strip_html | json }},
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": {{ block.settings.answer | strip_html | strip_newlines | json }}
+            }
+          }{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+      ]
+    }
+  </script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "שאלות נפוצות",
+  "max_blocks": 20,
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "שורת פתיחה קטנה",
+      "default": "טוב לדעת"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת",
+      "default": "שאלות נפוצות"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "כותרת משנה",
+      "default": "כל מה שחשוב לדעת על משלוחים, איסוף עצמי, החזרות ותנאים לעסקים."
+    },
+    {
+      "type": "checkbox",
+      "id": "open_first",
+      "label": "פתיחת השאלה הראשונה",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "כרטיס יצירת קשר"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_contact_card",
+      "label": "הצגת כרטיס יצירת קשר",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "contact_heading",
+      "label": "כותרת הכרטיס",
+      "default": "לא מצאתם תשובה?"
+    },
+    {
+      "type": "textarea",
+      "id": "contact_text",
+      "label": "טקסט הכרטיס",
+      "default": "הצוות שלנו זמין בטלפון ובוואטסאפ וישמח לעזור - גם בבחירת המוצר המתאים."
+    },
+    {
+      "type": "text",
+      "id": "contact_whatsapp_label",
+      "label": "כפתור וואטסאפ",
+      "default": "שליחת הודעה"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "question",
+      "name": "שאלה",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "השאלה",
+          "default": "מה זמני האספקה?"
+        },
+        {
+          "type": "richtext",
+          "id": "answer",
+          "label": "התשובה",
+          "default": "<p>הזמנות שמתקבלות עד 12:00 יוצאות לרוב באותו יום עסקים.</p>"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "שאלות נפוצות"
+    }
+  ]
+}
+{% endschema %}

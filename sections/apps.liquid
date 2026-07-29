@@ -1,0 +1,73 @@
+{%- comment -%}
+  Host section for Shopify app blocks so store apps (reviews, labels, badges,
+  accessibility widgets, …) can be placed anywhere in a template without editing code.
+{%- endcomment -%}
+
+<div class="section{% if section.settings.alt_background %} section--alt{% endif %}{% if section.settings.tight %} section--tight{% endif %}">
+  <div class="container{% if section.settings.width == 'narrow' %} container--narrow{% endif %}">
+    {%- if section.settings.heading != blank -%}
+      <div class="section-header">
+        <div class="section-header__text">
+          {%- if section.settings.eyebrow != blank -%}
+            <span class="text-eyebrow">{{ section.settings.eyebrow }}</span>
+          {%- endif -%}
+          <h2 class="section-header__heading">{{ section.settings.heading }}</h2>
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- for block in section.blocks -%}
+      <div class="apps-block" {{ block.shopify_attributes }}>
+        {%- render block -%}
+      </div>
+    {%- endfor -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "אפליקציות",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "שורת פתיחה קטנה"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "כותרת"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "רוחב התוכן",
+      "options": [
+        { "value": "normal", "label": "רגיל" },
+        { "value": "narrow", "label": "צר" }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "checkbox",
+      "id": "tight",
+      "label": "מרווח מוקטן",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "alt_background",
+      "label": "רקע אפור בהיר",
+      "default": false
+    }
+  ],
+  "blocks": [
+    { "type": "@app" }
+  ],
+  "presets": [
+    {
+      "name": "אפליקציות"
+    }
+  ]
+}
+{% endschema %}

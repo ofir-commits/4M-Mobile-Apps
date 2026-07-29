@@ -1,0 +1,1123 @@
+/* =========================================================
+   Shilo Pro — Header group (v2 "Clarity")
+   Announcement strip, ink utility row, main row with the big
+   predictive search field, nav row + mega menu, menu drawer.
+   Tokens only — see theme/DESIGN-SYSTEM.md.
+   Predictive result rows live in assets/section-search.css.
+   ========================================================= */
+
+/* ---------- Announcement strip (light, above the header) ---------- */
+.announcement-bar {
+  position: relative;
+  background: var(--color-surface-alt);
+  border-block-end: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.announcement-bar__inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 38px;
+  padding-block: 0.3rem;
+}
+
+.announcement-bar__track {
+  display: grid;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.announcement-bar__item {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-inline-size: 0;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out);
+  pointer-events: none;
+}
+
+.announcement-bar__item.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.announcement-bar__icon { color: var(--color-accent); }
+
+.announcement-bar__text {
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.announcement-bar__text {
+  text-decoration: none;
+  border-block-end: 1px solid var(--color-border-strong);
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+a.announcement-bar__text:hover {
+  color: var(--color-accent);
+  border-block-end-color: var(--color-accent);
+}
+
+.announcement-bar__aside {
+  display: none;
+  position: absolute;
+  inset-inline-end: var(--page-gutter);
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: color var(--duration-fast) ease;
+}
+
+.announcement-bar__aside:hover { color: var(--color-accent); }
+.announcement-bar__aside .icon { color: #25D366; }
+
+@media (min-width: 990px) {
+  .announcement-bar__aside { display: inline-flex; }
+  .announcement-bar__track {
+    max-inline-size: calc(100% - 320px);
+    margin-inline: auto;
+  }
+}
+
+/* ---------- Sticky wrapper (schema class on the section wrapper) ----------
+   The wrapper's flow height is a CONSTANT and the header floats inside it. That
+   is the whole point: the header shrinks by ~110px when it compresses, and while
+   that height was part of the document flow (a live-measured spacer written from
+   a ResizeObserver, frame by frame) the top-of-document height jittered by up to
+   a pixel per frame, Chrome's scroll anchoring answered by nudging the scroll
+   offset, and reconciling that with the compositor's in-flight fling is what the
+   finger felt as a stutter. With a fixed wrapper, resizing the header relayouts
+   the header subtree and nothing else — the page below never moves, so scroll
+   anchoring never engages.
+   The values below are only a pre-JS fallback: section-header.js measures the
+   real expanded header once per layout epoch (DOMContentLoaded, fonts.ready,
+   debounced resize) and overwrites --header-h, because the one thing that is not
+   knowable at author time is whether the 12-department nav row has wrapped to a
+   second line at the current width and page-width setting. They are rounded a
+   few pixels GENEROUS on purpose: too large leaves a hairline gap under the
+   header for the one frame before JS corrects it, too small lets the header
+   overhang and hide the first content below it.
+   The wrapper must never gain overflow: hidden/clip — the mega panels and the
+   predictive-search panel are absolutely positioned inside the header and would
+   be cut off. It stays overflow: visible at z-index 80, panels paint at 85/86. */
+.site-header-wrapper {
+  --header-row-util: 44px;
+  --header-row-main: 140px;
+  --header-row-nav: 0px;
+  --header-h: calc(var(--header-row-util) + var(--header-row-main) + var(--header-row-nav));
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 80;
+  block-size: var(--header-h);
+  pointer-events: none;
+}
+
+@media (min-width: 750px) {
+  .site-header-wrapper { --header-row-util: 40px; }
+}
+
+@media (min-width: 990px) {
+  .site-header-wrapper {
+    /* The mobile search row folds into the main row, and the nav row appears.
+       --header-row-nav is the TWO-line figure, not one: 48px per line
+       (--header-nav-h) + the 0.1rem row-gap + the 1px bottom border. That is not
+       pessimism, it is the documented normal case — see the wrap comment further
+       down in this file: the twelve department labels come to roughly 1,750px
+       against about 1,320px of usable width at the default page width, so
+       .site-nav wraps by design. A one-line 50px fallback left the wrapper ~47px
+       short, and because the wrapper's height IS the document flow height, every
+       section below it — the hero included — sat 47px too high until the deferred
+       script corrected it. Erring generous only risks a hairline gap for one
+       frame; erring short moves the whole page. */
+    --header-row-main: 88px;
+    --header-row-nav: 99px;
+  }
+}
+
+/* base.css hides .site-header when printing; without this the wrapper would
+   still reserve its height and every printout would start with a blank band. */
+@media print {
+  .site-header-wrapper {
+    position: static;
+    block-size: auto;
+  }
+}
+
+/* Absolute, not relative: the header has to be free to change height without
+   changing the wrapper's. It is still the containing block for its own panels —
+   .site-nav__panel--mega resolves against .site-header__nav and --flyout against
+   .site-nav__item, both inside the header — so nothing about the dropdowns
+   changes. sections/header.liquid restores position: relative when the merchant
+   turns the sticky behaviour off and the wrapper goes position: static. */
+.site-header {
+  position: absolute;
+  inset-block-start: 0;
+  inline-size: 100%;
+  pointer-events: auto;
+  background: var(--color-surface);
+  border-block-end: 1px solid var(--color-border);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+/* box-shadow cannot be handed to the compositor, so the resting shadow lives on
+   an inert overlay whose opacity is animated instead — the header repainted its
+   whole shadow on every frame of the hide-up slide before. inset: 0 tracks the
+   header's own box, which is exactly the visible header because the collapsing
+   rows collapse their boxes; pointer-events: none because the overlay covers the
+   entire header, and z-index: auto so the panels (85/86) still paint above it. */
+.site-header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-base) ease;
+}
+
+.site-header.is-stuck::after { opacity: 1; }
+
+.site-header.is-hidden-up {
+  transform: translateY(-102%);
+}
+
+.site-header.is-hidden-up::after { opacity: 0; }
+
+/* Measurement guard — section-header.js toggles is-stuck synchronously to read
+   both heights, and must not start any transition doing it. */
+.site-header.is-measuring,
+.site-header.is-measuring::after { transition: none; }
+
+/* ---------- Row 1 — utility strip on ink ---------- */
+/* No transition on block-size. It is a layout-triggering property, so animating
+   it cost a style recalc + layout + paint of the header subtree on the main
+   thread for every one of the ~15 frames of the collapse, right at the start of
+   the gesture (--ease-out is easeOutExpo-shaped and front-loads ~80% of the
+   motion into the first four frames). The collapse is now a single discrete
+   layout on the class flip, which the hysteresis in global.js fires once.
+   Composited motion is kept where it is free: the shadow overlay, the hide-up
+   slide, and the panel animations. */
+.site-header__util {
+  --header-util-h: 44px;
+  block-size: var(--header-util-h);
+  overflow: hidden;
+}
+
+.site-header.is-stuck .site-header__util { block-size: 0; }
+
+.site-header__util-inner {
+  display: flex;
+  align-items: center;
+  gap: 0 1.5rem;
+  block-size: var(--header-util-h);
+}
+
+.site-header__util-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-block-size: var(--header-util-h);
+  min-inline-size: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--color-on-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--duration-fast) ease;
+}
+
+.site-header__util-item .icon {
+  color: rgba(255, 255, 255, 0.55);
+  transition: color var(--duration-fast) ease;
+}
+
+a.site-header__util-item:hover { color: #fff; }
+a.site-header__util-item:hover .icon { color: #fff; }
+
+.site-header__util-phone { font-weight: 700; }
+
+.site-header__util-secondary {
+  display: none;
+  overflow: hidden;
+}
+
+.site-header__util-secondary > span:last-child {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Drawn inside — the utility row clips at its own height while collapsing. */
+.site-header__util-item:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.site-header__util-contact {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.site-header__util-contact:hover { text-decoration-color: #fff; }
+
+@media (min-width: 750px) {
+  .site-header__util { --header-util-h: 40px; }
+  .site-header__util-secondary { display: inline-flex; }
+}
+
+/* ---------- Row 2 — logo, search, actions ---------- */
+/* padding-block is layout-triggering too, so it snaps with the rest of the
+   collapse instead of animating. A ~6px step is imperceptible on its own. */
+.site-header__main {
+  padding-block: 0.5rem;
+}
+
+.site-header.is-stuck .site-header__main { padding-block: 0.35rem; }
+
+.site-header__row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-block-size: 56px;
+}
+
+.site-header__burger {
+  margin-inline-start: -8px;
+  flex-shrink: 0;
+}
+
+.site-header__logo {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  margin-inline-end: auto;
+  text-decoration: none;
+  border-radius: var(--radius-base);
+}
+
+/* Both axes are bounded and both sizes are auto, so the replaced-element
+   constraint table scales the logo down proportionally until it satisfies the
+   tighter bound — whichever that is. No aspect ratio has to be passed in from
+   Liquid; the image's own dimensions decide.
+   Which bound should win depends on the mark. The shop's logo is its horizontal
+   lockup (500x100, 5:1), and for a wide mark HEIGHT is the bound that matters in
+   a header row, so the width allowance has to stay loose enough to let the height
+   cap govern: 46px x 5 = 230px, hence a 58vw guard rather than the 40vw that used
+   to clamp it to a 31px-tall sliver. The guard still earns its keep on a 320px
+   phone, where the burger and the cart leave only ~199px for the logo and 230px
+   of it would collide with them; 58vw yields 186px there, 226px at 390px.
+   Keep max-block-size the governing bound for any square mark someone swaps in
+   later: that is what stops a near-1:1 logo growing ~165px tall and swallowing
+   the whole phone header, which is exactly what happened before. */
+.site-header__logo-img {
+  inline-size: auto;
+  block-size: auto;
+  max-inline-size: min(var(--logo-width, 260px), 58vw);
+  max-block-size: 46px;
+  object-fit: contain;
+}
+
+.site-header__logo-text {
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  font-size: clamp(1.2rem, 4.5vw, 1.55rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+  white-space: nowrap;
+  max-inline-size: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-header__icons {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.site-header__account { display: none; }
+
+/* ---------- The search field (visual anchor of the header) ---------- */
+.site-header__search {
+  display: none;
+  min-inline-size: 0;
+}
+
+.site-header__search-row { padding-block: 0.15rem 0.6rem; }
+
+.header-search {
+  position: relative;
+  inline-size: 100%;
+}
+
+.header-search__box {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding-inline-start: 0.55rem;
+  background: var(--color-surface-alt);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.header-search__box:hover { border-color: var(--color-border-strong); }
+
+.header-search__box:focus-within {
+  background: var(--color-surface);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.16);
+}
+
+.header-search__icon {
+  display: none;
+  align-items: center;
+  padding-inline-start: 0.35rem;
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) ease;
+}
+
+.header-search__box:focus-within .header-search__icon { color: var(--color-accent); }
+
+.header-search__input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  border: none;
+  background: transparent;
+  padding-block: 0;
+  padding-inline: 0.6rem 0.3rem;
+  min-block-size: 50px;
+  font-size: 1rem;
+}
+
+.header-search__input:focus { outline: none; }
+
+.header-search__input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.9;
+}
+
+.header-search__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.header-search__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+.header-search__clear:hover {
+  color: var(--color-ink);
+  background: rgba(var(--color-ink-rgb), 0.06);
+}
+
+.header-search__submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-inline-size: 46px;
+  min-block-size: 44px;
+  margin: 3px;
+  padding-inline: 0;
+  flex-shrink: 0;
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  font-size: 0.94rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease;
+}
+
+.header-search__submit:hover { background: var(--color-accent-hover); }
+
+.header-search__submit-text { display: none; }
+
+.header-search.is-searching .header-search__submit-icon,
+.header-search.is-searching .header-search__submit-text { opacity: 0; }
+
+.header-search.is-searching .header-search__submit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  inline-size: 18px;
+  block-size: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-block-start-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+/* ---------- Search dropdown shell ---------- */
+.header-search__panel {
+  position: absolute;
+  inset-block-start: calc(100% + 10px);
+  inset-inline: 0;
+  z-index: 86;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem 1.1rem;
+  max-block-size: min(72vh, 580px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+  animation: header-panel-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes header-panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header-search__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.header-search__popular .chip .icon { color: var(--color-text-muted); }
+
+/* Skeleton shown while the first predictive request is in flight */
+.header-search__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.header-search__skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.header-search__skeleton-media {
+  inline-size: 56px;
+  block-size: 56px;
+  flex-shrink: 0;
+  border-radius: var(--radius-base);
+}
+
+.header-search__skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+}
+
+.header-search__skeleton-line {
+  block-size: 11px;
+  inline-size: 100%;
+}
+
+.header-search__skeleton-line--short { inline-size: 38%; }
+
+/* ---------- Row 3 — nav row ---------- */
+.site-header__nav {
+  --header-nav-h: 48px;
+  display: none;
+  position: relative;
+  background: var(--color-surface);
+}
+
+/* The nav row carries 12 departments. Their labels plus chevrons and padding come
+   to roughly 1,750px against about 1,320px of usable width at the default page
+   width, so `gap: 0.05rem` + `flex-wrap: nowrap` + the per-item ellipsis was never
+   a spacing decision - the row was over-subscribed and every label was being
+   truncated, which is exactly why the items looked jammed together.
+   Wrapping is the fix rather than a scroll container: `overflow-x: auto` here would
+   establish a clipping box, and the two-level `.site-nav__panel--flyout` resolves
+   against `.site-nav__item` INSIDE that box, so every dropdown would be cut off.
+   (The full-width `--mega` panel would survive, since its containing block is
+   `.site-header__nav`, an ancestor of the scroller - but the flyouts would not.)
+   So: items keep their natural width, nothing truncates, nothing clips, and the row
+   takes a second line when it has to. That wrap is also the reason the sticky
+   wrapper's fixed height cannot simply be hardcoded: section-header.js measures the
+   expanded header once per layout epoch and publishes it as --header-h. */
+.site-header__nav-inner {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  min-block-size: var(--header-nav-h);
+}
+
+.site-nav {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-inline-size: 0;
+}
+
+/* No shrinking: a department label is either fully readable or the row wraps. */
+.site-nav__item {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.site-nav__dropdown { display: block; block-size: 100%; }
+
+.site-nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-inline: 1.05rem;
+  block-size: 100%;
+  min-block-size: 46px;
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  font-size: 0.96rem;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  color: var(--color-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+.site-nav__link > span { white-space: nowrap; }
+
+.site-nav__link:hover { color: var(--color-accent); }
+
+.site-nav__link::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0.8rem;
+  block-size: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.site-nav__link:hover::after,
+.site-nav__link.is-active::after,
+details[open] > .site-nav__link::after { transform: scaleX(1); }
+
+.site-nav__link.is-active,
+details[open] > .site-nav__link { color: var(--color-accent); }
+
+.site-nav__link .icon-chevron { transition: transform var(--duration-base) var(--ease-out); }
+details[open] > .site-nav__link .icon-chevron { transform: rotate(180deg); }
+
+/* ---------- Dropdown panels ---------- */
+.site-nav__panel {
+  z-index: 85;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  animation: header-panel-in var(--duration-base) var(--ease-out);
+}
+
+/* Compact card for 2-level branches */
+.site-nav__panel--flyout {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  min-inline-size: 262px;
+  max-inline-size: min(360px, calc(100vw - 2 * var(--page-gutter)));
+  max-block-size: min(64vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.55rem;
+  border: 1px solid var(--color-border);
+  border-block-start: none;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+/* keep panels of the last items inside the viewport */
+.site-nav__item:nth-last-child(-n+2) .site-nav__panel--flyout {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
+.site-nav__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav__sublink {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-block-size: 44px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.94rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-base);
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.site-nav__sublink:hover,
+.site-nav__sublink:focus-visible {
+  background: var(--color-surface-alt);
+  color: var(--color-accent);
+}
+
+.site-nav__sublink.is-active {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.site-nav__sublink--all {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* Full-width mega panel for 3-level branches — the item goes static so the
+   panel resolves against the nav row and can span the whole header. */
+.site-nav__item--mega { position: static; }
+
+.site-nav__panel--mega {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline: 0;
+  padding-block: clamp(1.1rem, 2vw, 1.55rem) 0;
+  border-block-end: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+
+.site-nav__mega-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 1.15rem 1.75rem;
+  max-block-size: min(60vh, 500px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block-end: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.site-nav__mega-cols::-webkit-scrollbar { width: 6px; }
+.site-nav__mega-cols::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }
+.site-nav__mega-cols::-webkit-scrollbar-track { background: transparent; }
+
+.site-nav__col { min-inline-size: 0; }
+
+/* Department artwork inside the dropdowns. The store already maintains an image
+   per collection, so the menu can show what each department actually looks like
+   instead of being a wall of text.
+   contain, not cover: these images are a mix of designed square tiles, raw
+   product shots and brand wordmarks, and cropping a wordmark to a square would
+   destroy it. A fixed box on both axes means no layout shift, so the img needs
+   no width/height attributes.
+   Deliberately NOT the rail's --color-tile-bg token: the rail's field matches
+   the cream baked into the twelve DEPARTMENT images, but the level-2/3 images
+   this snippet mostly shows are product shots and wordmarks on WHITE (kodhot,
+   hr2630X1, …), so white is the unifying field here. No blend mode: a global
+   multiply would discolour the brand-wordmark thumbs in the מותגים panel
+   (e.g. Makita's teal would multiply to a dark green), and per-thumb flags
+   are not possible for menu-driven images. */
+.nav-thumb {
+  inline-size: var(--nav-thumb-size, 40px);
+  block-size: var(--nav-thumb-size, 40px);
+  flex: 0 0 auto;
+  object-fit: contain;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+/* The two-level flyout rows get a thumb too, so both panel types read alike. */
+.site-nav__sublink--thumbed {
+  gap: 0.6rem;
+  justify-content: flex-start;
+}
+
+.site-nav__sublink--thumbed > span {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Three children now: thumb, label, arrow. `space-between` would strand the label
+   in the middle, so pack from the start and push only the arrow out. */
+.site-nav__col-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  font-family: var(--font-heading-family);
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: var(--color-ink);
+  text-decoration: none;
+  padding-block-end: 0.5rem;
+  margin-block-end: 0.35rem;
+  border-block-end: 1px solid var(--color-border-strong);
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.site-nav__col-title > span {
+  margin-inline-end: auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-nav__col-title .icon {
+  opacity: 0;
+  color: var(--color-accent);
+  transition: opacity var(--duration-fast) ease, transform var(--duration-fast) var(--ease-out);
+}
+
+.site-nav__col-title:hover {
+  color: var(--color-accent);
+  border-block-end-color: var(--color-accent);
+}
+
+.site-nav__col-title:hover .icon { opacity: 1; }
+
+.site-nav__col-title.is-active {
+  color: var(--color-accent);
+  border-block-end-color: var(--color-accent);
+}
+
+.site-nav__col-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav__col-list .site-nav__sublink {
+  min-block-size: 40px;
+  padding-inline: 0.4rem;
+  margin-inline: -0.4rem;
+  font-size: 0.92rem;
+}
+
+.site-nav__mega-foot {
+  margin-block-start: clamp(0.9rem, 1.6vw, 1.25rem);
+  background: var(--color-surface-alt);
+  border-block-start: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+
+.site-nav__mega-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: 48px;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease, gap var(--duration-fast) ease;
+}
+
+.site-nav__mega-all:hover { color: var(--color-accent); gap: 0.7rem; }
+.site-nav__mega-all .icon { color: var(--color-accent); }
+.site-nav__mega-all-label { color: var(--color-text-muted); font-weight: 600; }
+.site-nav__mega-all:hover .site-nav__mega-all-label { color: inherit; }
+
+/* Touch devices wide enough for the nav row get full-size tap targets. */
+@media (hover: none) {
+  .site-nav__col-list .site-nav__sublink { min-block-size: 44px; }
+  .site-nav__col-title { min-block-size: 44px; }
+  .site-nav__col-title .icon { opacity: 1; }
+}
+
+/* ---------- Menu drawer (mobile, 3 levels) ---------- */
+.menu-drawer .drawer__body { padding: 0.4rem 1.3rem 1.25rem; }
+
+.menu-drawer__list,
+.menu-drawer__utils {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu-drawer__link,
+.menu-drawer__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  inline-size: 100%;
+  min-block-size: 52px;
+  padding-block: 0.7rem;
+  font-family: var(--font-heading-family);
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--color-ink);
+  text-decoration: none;
+  border-block-end: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease;
+}
+
+.menu-drawer__link:hover,
+.menu-drawer__link.is-active,
+.menu-drawer__toggle.is-active { color: var(--color-accent); }
+
+.menu-drawer__toggle .icon-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+details[open] > .menu-drawer__toggle { color: var(--color-accent); border-block-end-color: transparent; }
+details[open] > .menu-drawer__toggle .icon-chevron { transform: rotate(180deg); color: var(--color-accent); }
+
+.menu-drawer__sublist {
+  margin: 0 0 0.55rem;
+  padding: 0.35rem 0.85rem 0.5rem;
+  list-style: none;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-base);
+}
+
+.menu-drawer__sublist--nested {
+  margin: 0 0 0.35rem;
+  padding: 0.1rem 0 0.15rem 0;
+  padding-inline-start: 0.8rem;
+  background: transparent;
+  border-radius: 0;
+  border-inline-start: 1px solid var(--color-border-strong);
+  margin-inline-start: 0.3rem;
+}
+
+/* Level 2 and 3 share one row style — a chevron is the only thing that marks
+   an expandable branch, so the two levels read as one list. */
+.menu-drawer__sublink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-block: 0.4rem;
+  font-family: var(--font-body-family);
+  font-size: 0.97rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-decoration: none;
+  border-block-end: none;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease;
+}
+
+.menu-drawer__sublink:hover,
+.menu-drawer__sublink.is-active { color: var(--color-accent); }
+
+.menu-drawer__sublink--leaf {
+  font-weight: 500;
+  font-size: 0.94rem;
+  color: var(--color-text);
+}
+
+.menu-drawer__sublink--all {
+  font-weight: 700;
+  color: var(--color-accent);
+  justify-content: flex-start;
+  gap: 0.35rem;
+}
+
+.menu-drawer__utils {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: 1rem;
+  padding-block-start: 0.6rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.menu-drawer__util {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-block-size: 46px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease;
+}
+
+.menu-drawer__util:hover { color: var(--color-accent); }
+.menu-drawer__util .icon { color: var(--color-text-muted); }
+.menu-drawer__util:hover .icon { color: var(--color-accent); }
+
+.menu-drawer__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.menu-drawer__actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+}
+
+.menu-drawer__actions:has(> * + *) { grid-template-columns: 1fr 1fr; }
+
+.menu-drawer__action { min-block-size: 46px; }
+
+.menu-drawer__action--whatsapp {
+  --btn-bg: #25D366;
+  --btn-color: #fff;
+  --btn-border: transparent;
+}
+
+.menu-drawer__action--whatsapp:hover {
+  --btn-bg: #25D366;
+  filter: brightness(0.93);
+}
+
+.menu-drawer__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.menu-drawer__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.menu-drawer__meta-item .icon { color: var(--color-accent); }
+
+/* ---------- Desktop ---------- */
+@media (min-width: 990px) {
+  .site-header { border-block-end: none; }
+
+  .site-header__burger { display: none; }
+  .site-header__search-row { display: none; }
+  .site-header__account { display: inline-flex; }
+
+  .site-header__logo { margin-inline-end: 0; }
+  .site-header__logo-img {
+    max-inline-size: var(--logo-width, 260px);
+    max-block-size: 60px;
+  }
+  .site-header__logo-text { max-inline-size: 320px; }
+
+  .site-header__main { padding-block: 0.8rem; }
+  .site-header__row { min-block-size: 60px; gap: 0.5rem; }
+
+  .site-header__search {
+    display: block;
+    flex: 1 1 auto;
+    max-inline-size: 640px;
+    margin-inline: clamp(1rem, 3vw, 2.75rem);
+  }
+
+  .header-search__icon { display: inline-flex; }
+  .header-search__input { min-block-size: 52px; font-size: 1.02rem; }
+  .header-search__submit { min-block-size: 44px; padding-inline: 1.15rem; }
+  .header-search__submit-icon { display: none; }
+  .header-search__submit-text { display: inline; }
+
+  .site-header__nav {
+    display: block;
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  /* Compressed state: utility + nav rows fold away, leaving logo + search +
+     actions. The burger takes over so the catalogue stays one tap away.
+     Every declaration in this block is untransitioned on purpose — see the note
+     on .site-header__util. They all resolve in the same single layout pass.
+     The nav row never animated anyway: its base block-size is `auto`, and
+     auto → 0 is not interpolable without interpolate-size/calc-size, so the row
+     already snapped in one frame while the reserve spacer was still chasing it. */
+  .site-header.is-stuck .site-header__main { padding-block: 0.4rem; }
+  .site-header.is-stuck .site-header__row { min-block-size: 52px; }
+  .site-header.is-stuck .site-header__logo-img {
+    max-inline-size: min(var(--logo-width, 260px), 220px);
+    max-block-size: 42px;
+  }
+  .site-header.is-stuck .header-search__input { min-block-size: 48px; }
+  .site-header.is-stuck .site-header__burger { display: inline-flex; margin-inline-start: -8px; }
+
+  /* border-block-end-width goes with it, or the collapsed row would leave a
+     stray 1px rule under the compressed header. */
+  .site-header.is-stuck .site-header__nav {
+    block-size: 0;
+    border-block-end-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .announcement-bar__item,
+  .site-header,
+  .site-header::after,
+  .site-header__util,
+  .site-header__nav,
+  .site-header__main,
+  .site-header__logo-img,
+  .header-search__panel,
+  .site-nav__panel {
+    transition: none;
+    animation: none;
+  }
+}

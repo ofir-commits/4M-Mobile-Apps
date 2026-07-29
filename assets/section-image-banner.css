@@ -1,0 +1,997 @@
+/* =========================================================
+   Shilo Pro — Homepage hero (image banner)
+   v2 "Clarity": one calm dark stage, huge tight headline,
+   catalogue search as the primary navigation.
+   Tokens only — see theme/DESIGN-SYSTEM.md.
+
+   v2.1 adds the motion stage: "שולחן השרטוט החי".
+   Four rules hold for everything under "Motion stage" below, and breaking any
+   one of them is what turns a hero into a battery drain:
+
+   1. transform and opacity ONLY. No filter, no backdrop-filter over a moving
+      surface, no animated background-position / background-size / gradient
+      stops / box-shadow / clip-path / stroke-dashoffset / width / top. Those
+      are all paint-bound; the point of the stage is that after the first frame
+      the compositor does every remaining frame on its own.
+   2. Every rule declares its own STATIC POSTER state and the animations are
+      attached in one gated block near the bottom of the file. Detach that block
+      and the hero looks finished, not half-drawn — which is exactly what the
+      reduced-motion and "motion off" paths rely on.
+   3. Masks are radial only. mask-image accepts no logical keywords, so a
+      directional linear-gradient mask would need mirroring in RTL. A radial
+      mask centred on its own box never does.
+   4. rotate() has no logical equivalent either, so the one tilt in the file
+      (the light beam) reads its angle from --hero-beam-tilt, which is the single
+      value flipped under [dir="rtl"].
+   ========================================================= */
+
+/* Pointer parallax is written into these two, per element, by the section's
+   script. Registering them as <length> is what makes `transition: translate`
+   interpolate instead of jumping; `inherits: false` keeps a pointer move from
+   invalidating style for the whole subtree. */
+@property --hero-px {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --hero-py {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+.image-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--color-ink);
+  color: #fff;
+
+  /* 48px matches .blueprint-field (base.css); 112 is deliberately not a
+     multiple of it, so the two grids never beat against each other. */
+  --hero-tile-near: 48px;
+  --hero-tile-far: 112px;
+  /* The theme has no tokens for ambient motion (--duration-base is 240ms, an
+     interaction figure), so the five loop lengths live here. If a second
+     section ever grows a living background these belong in theme.liquid. */
+  --hero-dur-near: 13s;
+  --hero-dur-far: 84s;
+  --hero-dur-aura-a: 96s;
+  --hero-dur-aura-b: 132s;
+  --hero-dur-shaft: 19s;
+  /* Shared geometry for the skylight beam and the dust inside it, so the motes
+     cannot drift away from the light they are supposed to be floating in. */
+  --hero-beam-inline: clamp(170px, 26vw, 380px);
+  --hero-beam-end: 7%;
+  --hero-beam-tilt: 13deg;
+
+  /* The stage never paints outside itself. NOT content-visibility: this block
+     is above the fold and skipping its layout would postpone the LCP text. */
+  contain: paint;
+}
+
+[dir="rtl"] .image-banner { --hero-beam-tilt: -13deg; }
+
+/* ---------- Heights ---------- */
+.image-banner--small { min-block-size: clamp(360px, 46svh, 470px); }
+.image-banner--medium { min-block-size: clamp(450px, 62svh, 600px); }
+.image-banner--large { min-block-size: clamp(540px, 78svh, 760px); }
+.image-banner--full {
+  min-block-size: 100vh;
+  min-block-size: 100svh;
+}
+
+/* ---------- Photo / video layers ---------- */
+.image-banner__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.image-banner__media img,
+.image-banner__media video {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* The poster is a real responsive <img>, not the video's poster= attribute, so
+   the LCP candidate is an ordinary prioritised image with predictable timing.
+   The video only becomes visible once it is actually playing — if it is blocked,
+   throttled or fails, the visitor keeps the poster instead of a black frame. */
+.image-banner__video {
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+.image-banner__media.is-playing .image-banner__video { opacity: 1; }
+
+/* Merchant-controlled legibility tint (overlay_opacity). It sits directly on the
+   footage, below the coded layers — tinting the stage as well would double-dim
+   the grid, which is already pulled back to 46% over video. */
+.image-banner__tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-color: var(--color-ink);
+  opacity: var(--overlay-opacity, 0.55);
+  pointer-events: none;
+}
+
+/* Fixed baseline scrim so text stays readable at any tint setting.
+   Vertical only — direction-safe in RTL and LTR. */
+.image-banner__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--color-ink-rgb), 0.72) 0%,
+    rgba(var(--color-ink-rgb), 0.28) 52%,
+    rgba(var(--color-ink-rgb), 0.5) 100%
+  );
+  pointer-events: none;
+}
+
+/* Footage is the one background nobody can audit in advance, so it gets a
+   stronger floor than a still: white body copy over a bright frame measures
+   6.4:1 at the shipped 55% tint, and the 0.87rem trust chips 6.2:1. */
+.image-banner--has-video .image-banner__scrim {
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--color-ink-rgb), 0.78) 0%,
+    rgba(var(--color-ink-rgb), 0.44) 55%,
+    rgba(var(--color-ink-rgb), 0.6) 100%
+  );
+}
+
+/* ---------- Designed fallback (no photography yet) ---------- */
+.image-banner--designed { background-color: var(--color-ink); }
+
+.image-banner--designed .image-banner__scrim {
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--color-ink-rgb), 0.55) 0%,
+    transparent 58%
+  );
+}
+
+/* =========================================================
+   Motion stage — "שולחן השרטוט החי"
+
+   Layer order, back to front. The self-drawing detail deliberately sits BELOW
+   the scrim: it is architecture, not UI, and it must never compete with the
+   headline for legibility.
+
+     1  tint            merchant tint over footage
+     2  plane--far      112px grid, 1.33 px/s
+     3  plane--near      48px grid, 3.7 px/s   (+ pointer parallax)
+     4  aura            two counter-rotating gradient masses
+     5  shaft / motes   skylight beam + rising sawdust
+     6  draw            the construction detail that draws itself
+     7  scrim           legibility floor
+     8  level           the laser level that lands on the bottom rule
+     9  container       the content
+    10  edge            .blueprint-rule, scaled in as the laser lands
+   ========================================================= */
+
+/* Two grids at different speeds are the whole depth trick: 3.7 px/s against
+   1.33 px/s is a 2.8:1 ratio, which the eye reads as distance. Both are far too
+   slow to look like an animation — the surface just stops feeling dead.
+   The element is one tile taller than the stage and starts one tile high, so the
+   drift can travel exactly one tile and the seam never shows. */
+.hero-stage__plane {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: calc(var(--tile) * -1);
+  block-size: calc(100% + var(--tile));
+  background-image:
+    linear-gradient(var(--blueprint-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--blueprint-line) 1px, transparent 1px);
+  background-size: var(--tile) var(--tile);
+  pointer-events: none;
+}
+
+.hero-stage__plane--far {
+  z-index: 2;
+  --tile: var(--hero-tile-far);
+  --dur: var(--hero-dur-far);
+  --blueprint-line: rgba(255, 255, 255, 0.042);
+  -webkit-mask-image: radial-gradient(ellipse 106% 94% at 50% 22%, #000 20%, transparent 78%);
+  mask-image: radial-gradient(ellipse 106% 94% at 50% 22%, #000 20%, transparent 78%);
+}
+
+.hero-stage__plane--near {
+  z-index: 3;
+  --tile: var(--hero-tile-near);
+  --dur: var(--hero-dur-near);
+  --blueprint-line: rgba(255, 255, 255, 0.072);
+  /* Parallax writes the INDEPENDENT `translate` property so it composes with the
+     keyframed `transform` instead of replacing it. Move this to `transform` and
+     the drift keyframe swallows it and the grid freezes. */
+  translate: var(--hero-px) var(--hero-py);
+  transition: translate 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-mask-image: radial-gradient(ellipse 80% 68% at 50% 30%, #000 6%, transparent 72%);
+  mask-image: radial-gradient(ellipse 80% 68% at 50% 30%, #000 6%, transparent 72%);
+}
+
+/* One tile exactly, so the 100% frame is pixel-identical to the 0% frame. Only
+   translate, never scale: scaling a repeating 1px pattern is what makes hairline
+   grids shimmer on weaker GPUs. */
+@keyframes hero-plane-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, var(--tile), 0); }
+}
+
+/* Softness comes from gradient stops, never from filter: blur(). A blurred blob
+   re-runs the blur over ~600k pixels every frame; this is two composited layers
+   and zero repaint after the first one. */
+.hero-stage__aura {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.hero-stage__aura::before,
+.hero-stage__aura::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+}
+
+/* Shilo red, parked mostly off-stage so only the falloff is on screen —
+   DESIGN-SYSTEM.md bans large red areas, so the peak alpha is 0.20.
+   The ellipse is deliberately off-centre: rotating a symmetrical
+   radial-gradient(circle at 50% 50%) is a visual no-op. */
+.hero-stage__aura::before {
+  inline-size: min(96%, 1060px);
+  aspect-ratio: 1;
+  inset-block-start: -48%;
+  inset-inline-end: -24%;
+  background-image: radial-gradient(
+    ellipse 64% 100% at 44% 36%,
+    rgba(var(--color-accent-rgb), 0.2) 0%,
+    rgba(var(--color-accent-rgb), 0.095) 32%,
+    rgba(var(--color-accent-rgb), 0.03) 52%,
+    transparent 70%
+  );
+  transform-origin: 60% 42%;
+}
+
+/* The second mass is white alpha only — no second hue enters the palette. It
+   turns the other way, which is what stops the pair reading as a wheel. */
+.hero-stage__aura::after {
+  inline-size: min(80%, 840px);
+  aspect-ratio: 1;
+  inset-block-end: -56%;
+  inset-inline-start: -28%;
+  background-image: radial-gradient(
+    ellipse 100% 62% at 56% 58%,
+    rgba(255, 255, 255, 0.075) 0%,
+    rgba(255, 255, 255, 0.028) 38%,
+    transparent 68%
+  );
+  transform-origin: 44% 56%;
+}
+
+@keyframes hero-aura-a {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.12); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes hero-aura-b {
+  0% { transform: rotate(0deg) scale(1.05); }
+  50% { transform: rotate(-180deg) scale(0.95); }
+  100% { transform: rotate(-360deg) scale(1.05); }
+}
+
+/* A skylight beam over a timber yard. This is where the background stops being
+   decoration and becomes a place. */
+.hero-stage__shaft {
+  position: absolute;
+  z-index: 5;
+  inset-block: -20%;
+  inset-inline-end: var(--hero-beam-end);
+  inline-size: var(--hero-beam-inline);
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.058) 0%,
+    rgba(255, 255, 255, 0.022) 48%,
+    transparent 90%
+  );
+  transform: rotate(var(--hero-beam-tilt));
+  -webkit-mask-image: radial-gradient(ellipse 90% 76% at 50% 22%, #000 8%, transparent 76%);
+  mask-image: radial-gradient(ellipse 90% 76% at 50% 22%, #000 8%, transparent 76%);
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+@keyframes hero-shaft-breathe {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 1; }
+}
+
+/* The dust shares the beam's box and tilt instead of being masked to a fixed
+   percentage of the stage. That is what makes it direction-safe: the mask below
+   is centred on this element, so it follows the beam to the other side under
+   [dir="rtl"] with no mirrored coordinates anywhere. It also means the motes
+   rise ALONG the beam axis rather than straight up through it. */
+.hero-stage__motes {
+  position: absolute;
+  z-index: 5;
+  inset-block: -20%;
+  inset-inline-end: var(--hero-beam-end);
+  inline-size: var(--hero-beam-inline);
+  transform: rotate(var(--hero-beam-tilt));
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 78% 86% at 50% 42%, #000 6%, transparent 78%);
+  mask-image: radial-gradient(ellipse 78% 86% at 50% 42%, #000 6%, transparent 78%);
+}
+
+.hero-stage__mote {
+  position: absolute;
+  inset-block-end: var(--y);
+  inset-inline-start: var(--x);
+  inline-size: var(--d);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.34) 36%,
+    transparent 70%
+  );
+  /* Resting state is invisible: a frozen dust mote is a dot, not dust. */
+  opacity: 0;
+}
+
+/* --dy is negative — sawdust in a warm draught rises, it does not fall like
+   snow. Ends on opacity 0, so the poster frame contains no motes at all. */
+@keyframes hero-mote {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.62); }
+  14% { opacity: 0.95; }
+  64% { opacity: 0.7; }
+  100% { opacity: 0; transform: translate3d(var(--dx), var(--dy), 0) scale(1.18); }
+}
+
+/* ---------- The construction detail that draws itself ---------- */
+.hero-stage__draw {
+  position: absolute;
+  z-index: 6;
+  inset-block-start: clamp(-2%, 2vw, 6%);
+  inset-inline-end: clamp(-4%, 1vw, 4%);
+  inline-size: clamp(240px, 33vw, 520px);
+  pointer-events: none;
+  opacity: 0.92;
+  /* Same independent-property rule as the near grid; see that comment. */
+  translate: var(--hero-px) var(--hero-py);
+  transition: translate 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-mask-image: radial-gradient(ellipse 86% 86% at 50% 46%, #000 28%, transparent 84%);
+  mask-image: radial-gradient(ellipse 86% 86% at 50% 46%, #000 28%, transparent 84%);
+}
+
+.hero-stage__draw svg {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+/* Strokes live here rather than on SVG presentation attributes: var() is not
+   reliably resolved inside a presentation attribute, and --color-accent-rgb is
+   the only correct source for the dimension line's red. */
+.hero-draw__frame {
+  stroke: rgba(255, 255, 255, 0.26);
+  stroke-width: 1.6;
+}
+
+.hero-draw__brace {
+  stroke: rgba(255, 255, 255, 0.17);
+  stroke-width: 1.4;
+}
+
+/* A real ISO centre line: long-dash-dot, and completely static. The dash
+   pattern is geometry, not an animation — animating it would repaint the SVG. */
+.hero-draw__centre {
+  stroke: rgba(255, 255, 255, 0.19);
+  stroke-width: 1;
+  stroke-dasharray: 26 7 4 7;
+}
+
+.hero-draw__dim {
+  stroke: rgba(var(--color-accent-rgb), 0.85);
+  stroke-width: 1.4;
+  fill: none;
+}
+
+/* Latin digits only, so the Hebrew letter-spacing ceiling does not apply and
+   there is no bidi risk inside the drawing. The <svg> root carries fill="none",
+   so the label has to name its own fill. */
+.hero-draw__label {
+  font-family: var(--font-heading-family);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  fill: rgba(var(--color-accent-rgb), 0.88);
+  stroke: none;
+}
+
+/* stroke-dashoffset is paint-bound: it redraws the whole SVG every frame. Each
+   member is a <rect> that scales up from its own edge instead — pure transform,
+   and a 2x4 stud genuinely IS a rectangle, so the geometry is honest too.
+   No vector-effect: non-scaling-stroke — under scaleY(0) the stroke would
+   refuse to converge and the member would stay a full-length line. */
+.hero-stage__draw [data-draw] { transform-box: fill-box; }
+.hero-stage__draw [data-draw="x"] { transform-origin: 0% 50%; }
+.hero-stage__draw [data-draw="y"] { transform-origin: 50% 0%; }
+
+/* A horizontal or vertical <line> has a zero-area bbox, where fill-box
+   degenerates. Every line and path here uses view-box with an explicit origin in
+   user units. Copy the wrong selector onto a new member and it will not draw. */
+.hero-draw__brace,
+.hero-draw__centre line,
+.hero-draw__witness,
+.hero-draw__dimline,
+.hero-draw__tick { transform-box: view-box; }
+
+.hero-draw__brace { transform-origin: 100px 414px; }
+.hero-draw__centre line { transform-origin: 40px 245px; }
+.hero-draw__witness--a { transform-origin: 93px 440px; }
+.hero-draw__witness--b { transform-origin: 193px 440px; }
+.hero-draw__dimline { transform-origin: 93px 486px; }
+.hero-draw__tick--a { transform-origin: 93px 486px; --nudge: 5px; }
+.hero-draw__tick--b { transform-origin: 193px 486px; --nudge: -5px; }
+
+@keyframes hero-draw-x {
+  0% { opacity: 0; transform: scaleX(0.001); }
+  14% { opacity: 1; }
+  100% { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes hero-draw-y {
+  0% { opacity: 0; transform: scaleY(0.001); }
+  14% { opacity: 1; }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+
+/* The brace grows out of the bottom plate, the way a carpenter would set it. */
+@keyframes hero-draw-brace {
+  0% { opacity: 0; transform: scale(0.02); }
+  18% { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes hero-tick-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* The two arrowheads keep measuring, forever. A 5px nudge, nothing more — this
+   is the only permanent loop in the drawing, and it ends back at translate(0). */
+@keyframes hero-tick-measure {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(var(--nudge), 0); }
+}
+
+@keyframes hero-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- The laser level, which lands and becomes the bottom rule ---------- */
+.hero-stage__level {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.hero-stage__level::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  block-size: 1px;
+  /* Symmetric stops, so the line is visually identical mirrored and `to right`
+     needs no RTL counterpart. */
+  background-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(var(--color-accent-rgb), 0.92) 18%,
+    rgba(var(--color-accent-rgb), 0.92) 82%,
+    transparent 100%
+  );
+  /* Static. Animating box-shadow repaints every frame; the parent's transform
+     carries the glow down the stage for free. */
+  box-shadow: 0 0 22px 1px rgba(var(--color-accent-rgb), 0.42);
+  opacity: 0;
+}
+
+@keyframes hero-level-travel {
+  from { transform: translate3d(0, -6%, 0); }
+  to { transform: translate3d(0, 100%, 0); }
+}
+
+@keyframes hero-level-fade {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  76% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Signature blueprint rule along the bottom edge. */
+.image-banner .image-banner__edge {
+  position: absolute;
+  z-index: 10;
+  inset-block-end: 0;
+  inset-inline: 0;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+@keyframes hero-edge-land {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+/* Real footage already carries texture, so the coded layers step back to an
+   overlay. The drawing and the laser survive the upgrade — they are the part
+   that says "this store" rather than "some stock clip". */
+.image-banner--has-video .hero-stage__plane { opacity: 0.46; }
+.image-banner--has-video .hero-stage__aura { opacity: 0.55; }
+.image-banner--has-video .hero-stage__shaft,
+.image-banner--has-video .hero-stage__motes { display: none; }
+
+/* ---------- Content shell ---------- */
+.image-banner__container {
+  position: relative;
+  z-index: 9;
+  display: flex;
+  inline-size: 100%;
+  padding-block: clamp(3rem, 7vw, 5.75rem);
+}
+
+.image-banner__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(0.8rem, 1.5vw, 1.15rem);
+  inline-size: 100%;
+  max-inline-size: 47rem;
+  text-align: start;
+}
+
+.image-banner--align-center .image-banner__container { justify-content: center; }
+.image-banner--align-center .image-banner__content {
+  align-items: center;
+  text-align: center;
+  max-inline-size: 52rem;
+}
+
+/* ---------- Staged entrance ----------
+   The content does NOT use .reveal here. global.js writes an inline
+   transitionDelay on every revealed element (capped at 240ms), and an inline
+   style cannot be beaten from a stylesheet without !important — so a six-beat
+   choreography has to own its own timing. base.css's .reveal also parks the
+   element at opacity 0 until the observer fires, which is fatal for the <h1>
+   (see the LCP guard below). Delays are the choreography itself, not reusable
+   design values, so they stay literal. */
+.image-banner__eyebrow { --hero-beat: 90ms; }
+.image-banner__subheading { --hero-beat: 250ms; }
+.image-banner__search-wrap { --hero-beat: 360ms; }
+.image-banner__actions { --hero-beat: 470ms; }
+.image-banner__trust { --hero-beat: 560ms; }
+
+@keyframes hero-beat-in {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+/* LCP GUARD. templates/index.json ships no hero image, so the designed branch
+   runs and this <h1> is the homepage LCP element. Chrome will not accept text
+   painted at opacity 0 as an LCP candidate, so fading it in would push LCP out
+   by the whole entrance. It RISES instead: transform only, no opacity, no delay,
+   so the first painted frame already contains the finished text. */
+@keyframes hero-heading-rise {
+  from { transform: translate3d(0, 14px, 0); }
+  to { transform: none; }
+}
+
+/* ---------- Eyebrow ---------- */
+.image-banner__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-family: var(--font-heading-family);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.image-banner__eyebrow::before {
+  content: "";
+  inline-size: 26px;
+  block-size: 3px;
+  border-radius: 2px;
+  background-color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* ---------- Headline ---------- */
+.image-banner__heading {
+  margin: 0;
+  font-size: calc(clamp(2.1rem, 1.15rem + 4.4vw, 4.15rem) * var(--font-heading-scale));
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-wrap: balance;
+  text-shadow: 0 2px 20px rgba(var(--color-ink-rgb), 0.4);
+}
+
+.image-banner__subheading {
+  margin: 0;
+  font-size: clamp(1rem, 0.93rem + 0.42vw, 1.2rem);
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.86);
+  max-inline-size: 62ch;
+}
+
+/* ---------- Hero search ---------- */
+.image-banner__search-wrap {
+  inline-size: 100%;
+  max-inline-size: 41rem;
+  margin-block-start: clamp(0.35rem, 1vw, 0.75rem);
+}
+
+.image-banner--align-center .image-banner__search-wrap { margin-inline: auto; }
+
+.image-banner__search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.image-banner__search-box:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-lg), 0 0 0 3px rgba(var(--color-accent-rgb), 0.22);
+}
+
+.image-banner__search-input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  min-block-size: 48px;
+  padding-inline: 0.85rem;
+  font-size: 1.02rem;
+  font-weight: 500;
+  color: var(--color-text);
+  background-color: transparent;
+  border: none;
+  appearance: none;
+}
+
+.image-banner__search-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.9;
+}
+
+/* Focus is shown on the whole box, so the inner ring would be redundant. */
+.image-banner__search-input:focus,
+.image-banner__search-input:focus-visible { outline: none; }
+
+.image-banner__search-input::-webkit-search-cancel-button { cursor: pointer; }
+
+.image-banner__search-submit {
+  flex-shrink: 0;
+  padding-inline: 1.3rem;
+}
+
+/* ---------- Popular searches ---------- */
+.image-banner__popular {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.7rem;
+  margin-block-start: 0.85rem;
+}
+
+.image-banner--align-center .image-banner__popular { justify-content: center; }
+
+.image-banner__popular-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.image-banner__popular-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Tap-target compliance for the pill links. */
+.image-banner__popular-list .chip { min-block-size: 44px; }
+
+/* ---------- Actions ---------- */
+.image-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-block-start: clamp(0.35rem, 1vw, 0.65rem);
+}
+
+.image-banner--align-center .image-banner__actions { justify-content: center; }
+
+/* ---------- Trust pills ---------- */
+.image-banner__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.55rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.image-banner--align-center .image-banner__trust { justify-content: center; }
+
+.image-banner__trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-block-size: 38px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.87rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* backdrop-filter forces everything under the pill to be re-read every frame.
+   Over a still photo that is free; over the motion stage it converts a
+   compositor-only hero into a full resolve per frame — the single fastest way to
+   kill a mid-range Android. The pills drop the blur wherever the stage is live
+   and take a slightly denser fill instead: same read, 7.2:1 on white text. */
+.image-banner--stage .image-banner__trust-item {
+  background-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.image-banner__trust-item .icon {
+  color: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   Motion switch
+
+   Every animation in this file is attached here and nowhere else, inside
+   prefers-reduced-motion: no-preference. That is deliberate rather than a set of
+   `animation: none` overrides, for two reasons:
+
+   1. base.css fast-forwards animations under prefers-reduced-motion
+      (animation-duration: 0.01ms, iteration-count: 1) but does not touch
+      animation-delay. A `both`-filled entrance would therefore still hold its 0%
+      frame for up to 1.5s and only then pop in. Never attaching it is instant.
+   2. Everything above already declares its poster state, so detaching the
+      animation needs no counterpart declaration anywhere in the file.
+
+   Each keyframe still ends on that same poster frame — checked one by one — so
+   the hero survives a fast-forward, a cancel, or no support for this query at
+   all. `.image-banner--motion-off` is the merchant switch; image-banner.liquid
+   maps the theme-wide "enable_animations = false" onto the same class.
+   No will-change anywhere: Blink promotes an element with a running
+   transform/opacity animation on its own and releases it afterwards, whereas a
+   standing will-change on ~23 layers would hold GPU memory forever.
+   ========================================================= */
+@media (prefers-reduced-motion: no-preference) {
+  .image-banner:not(.image-banner--motion-off) .hero-stage__plane {
+    animation: hero-plane-drift var(--dur) linear infinite;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-stage__aura::before {
+    animation: hero-aura-a var(--hero-dur-aura-a) linear infinite;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-stage__aura::after {
+    animation: hero-aura-b var(--hero-dur-aura-b) linear infinite;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-stage__shaft {
+    animation: hero-shaft-breathe var(--hero-dur-shaft) ease-in-out infinite;
+  }
+
+  /* --delay is negative on every mote, so each one starts mid-flight in the
+     first frame. Without that the hero opens on an empty beam that fills up
+     over three seconds — the classic particle-effect tell. */
+  .image-banner:not(.image-banner--motion-off) .hero-stage__mote {
+    animation: hero-mote var(--dur) linear var(--delay) infinite;
+  }
+
+  /* 0.52s per member, 80ms apart: plates first, then studs, the order a
+     draughtsman would actually use. */
+  .image-banner:not(.image-banner--motion-off) .hero-stage__draw [data-draw] {
+    animation: var(--kf) 0.52s var(--ease-out) var(--d, 0s) both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-stage__draw [data-draw="x"] { --kf: hero-draw-x; }
+  .image-banner:not(.image-banner--motion-off) .hero-stage__draw [data-draw="y"] { --kf: hero-draw-y; }
+
+  .image-banner:not(.image-banner--motion-off) .hero-draw__brace {
+    animation: hero-draw-brace 0.6s var(--ease-out) 0.62s both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-draw__centre line {
+    animation: hero-draw-x 0.8s var(--ease-out) 0.78s both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-draw__witness {
+    animation: hero-draw-y 0.34s var(--ease-out) both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-draw__witness--a { animation-delay: 0.96s; }
+  .image-banner:not(.image-banner--motion-off) .hero-draw__witness--b { animation-delay: 1.03s; }
+
+  .image-banner:not(.image-banner--motion-off) .hero-draw__dimline {
+    animation: hero-draw-x 0.42s var(--ease-out) 1.14s both;
+  }
+
+  /* The arrowheads land and then stop. The measuring loop that used to run here
+     forever was the one construct in this file that broke the file's own Rule 1,
+     and it broke it in the worst possible place: the targets are SVG <path>
+     children, and Blink builds no transform property node for those, so the
+     animation could never reach the compositor. It re-rastered the drawing on the
+     main thread every frame — and .hero-stage__draw carries a mask-image, so the
+     mask was re-applied over the whole layer every frame too, ~550k device pixels
+     at 60fps, above the fold, permanently. A 5px nudge is not worth that.
+     Gated to pointer-and-wide below, where the cost is affordable and the drawing
+     is large enough for the movement to read at all. */
+  .image-banner:not(.image-banner--motion-off) .hero-draw__tick {
+    animation: hero-tick-in 0.3s var(--ease-out) 1.36s both;
+  }
+
+  /* Two animations on one element: the later one wins the transform during the
+     overlap, and hero-tick-in resolves to scale(1) — identity — so nothing is
+     lost when the measuring loop takes over at 2.4s. */
+  @media (hover: hover) and (min-width: 990px) {
+    .image-banner:not(.image-banner--motion-off) .hero-draw__tick {
+      animation:
+        hero-tick-in 0.3s var(--ease-out) 1.36s both,
+        hero-tick-measure 4.6s ease-in-out 2.4s infinite;
+    }
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-draw__label {
+    animation: hero-fade-in 0.36s var(--ease-out) 1.52s both;
+  }
+
+  /* --ease-out is cubic-bezier(0.16, 1, 0.3, 1): a hard deceleration. That is
+     exactly the profile of a laser level dropping onto a height and settling. */
+  .image-banner:not(.image-banner--motion-off) .hero-stage__level {
+    animation: hero-level-travel 1.35s var(--ease-out) 0.28s both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-stage__level::after {
+    animation: hero-level-fade 1.35s linear 0.28s both;
+  }
+
+  /* The laser lands and becomes the brand rule. */
+  .image-banner--stage:not(.image-banner--motion-off) .image-banner__edge {
+    animation: hero-edge-land 0.7s var(--ease-out) 1.5s both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .hero-in {
+    animation: hero-beat-in 0.62s var(--ease-out) var(--hero-beat, 0ms) both;
+  }
+
+  .image-banner:not(.image-banner--motion-off) .image-banner__heading {
+    animation: hero-heading-rise 0.62s var(--ease-out) both;
+  }
+}
+
+/* "עדין" roughly halves the perceived speed of the two grids and the beam. The
+   motes are not rendered at all outside "מלא" (image-banner.liquid gates the
+   loop), so there is nothing here to slow down for them. Note these are longer
+   durations, never `0s`: a zero-length animation is under-specified in practice
+   across engines, so "off" is a missing animation and never a 0s one. */
+.image-banner--motion-subtle {
+  --hero-dur-near: 26s;
+  --hero-dur-far: 150s;
+  --hero-dur-shaft: 30s;
+}
+
+/* ---------- Small screens ---------- */
+/* ---------- Legibility: the beam column must never sit behind the text ----------
+   The mote column is anchored to inset-inline-end with a clamp(170px, 26vw, 380px)
+   width. On desktop that puts it on the far side of the row from the copy, which
+   is why it works there. Below 990px the content spans nearly the full width, so
+   the column lands directly behind the headline — and a mote core is
+   rgba(255,255,255,0.92) peaking at opacity 0.95, which against --color-ink drops
+   white-on-white contrast to about 1.44:1 over the 1-3px core. It reads as
+   sparkles punching holes through the letters, and it is too small for an
+   automated contrast audit to catch.
+   Thinning the count does not help: the survivors are still in the text column.
+   The column is removed instead. The beam gradient itself stays — it peaks at
+   0.058 alpha, far too faint to affect text contrast. */
+@media (max-width: 989px) {
+  .hero-stage__motes { display: none; }
+}
+
+@media (max-width: 749px) {
+  .image-banner__container { padding-block: clamp(2.75rem, 11vw, 4.25rem); }
+
+  .image-banner__content {
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .image-banner--align-center .image-banner__content { align-items: center; }
+
+  .image-banner__search-wrap { max-inline-size: none; }
+
+  .image-banner__subheading { max-inline-size: none; }
+
+  /* Mote count is moot below 990px — the whole column is hidden there, see the
+     legibility rule further down. Kept as the documented cut order for anyone
+     re-enabling them: motes first, then beam, then second aura, then far grid. */
+
+  /* Existing debt, paid here rather than left for the motion stage to trip over:
+     even over a completely still photograph a mid-range mobile GPU re-reads the
+     whole stack under a backdrop-filter while the page scrolls. Same denser fill
+     as the stage branch uses, same 7.2:1 on white text. */
+  .image-banner__trust-item {
+    background-color: rgba(255, 255, 255, 0.12);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* The drawing becomes a watermark rather than disappearing — it is the
+     signature, and a phone visitor should still see it. */
+  .hero-stage__draw {
+    inline-size: 64vw;
+    inset-inline-end: -18%;
+    inset-block-start: -4%;
+    opacity: 0.52;
+  }
+}
+
+@media (max-width: 599px) {
+  .image-banner__search-box { padding: 0.35rem; }
+  .image-banner__search-submit { padding-inline: 0.95rem; }
+  .image-banner__search-submit-text { display: none; }
+
+  .image-banner__actions {
+    inline-size: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .image-banner__action { inline-size: 100%; }
+
+  .image-banner__trust-item {
+    font-size: 0.83rem;
+    padding: 0.38rem 0.8rem;
+  }
+}

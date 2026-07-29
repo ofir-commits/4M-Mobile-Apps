@@ -1,0 +1,319 @@
+/* =========================================================
+   Shilo Pro — Cart drawer
+   v2 "Clarity": a white sheet of line items on white, hairline separated.
+   Red is reserved for the checkout button and for prices on sale.
+   Consumes .drawer / .shipping-bar / .qty / .price / .btn / .badge / .chip /
+   .empty-state from base.css — this file only positions them.
+   ========================================================= */
+
+.cart-drawer__inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.cart-drawer__count {
+  min-inline-size: 26px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-drawer__close { color: var(--color-ink); }
+
+/* ---------- Free-shipping strip ---------- */
+.cart-drawer__shipping {
+  flex-shrink: 0;
+  padding: 0.85rem 1.4rem;
+  background: var(--color-surface-alt);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.cart-drawer__shipping .shipping-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cart-drawer__shipping .shipping-bar__label .icon { flex-shrink: 0; }
+
+/* ---------- Lines ---------- */
+.cart-drawer__lines {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Thumbnail + text on the first two rows, then a full-width control row so the
+   full-size 44px stepper always fits — even in a 300px drawer on a small phone. */
+.cart-drawer-line {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 44px;
+  grid-template-areas:
+    "media    info     remove"
+    "media    unit     unit"
+    "controls controls controls";
+  column-gap: 0.85rem;
+  row-gap: 0.35rem;
+  padding-block: 1.05rem;
+  border-block-end: 1px solid var(--color-border);
+  transition: opacity var(--duration-base) ease, transform var(--duration-base) ease;
+}
+
+.cart-drawer-line:first-child { padding-block-start: 0; }
+.cart-drawer-line:last-child { border-block-end: none; padding-block-end: 0.25rem; }
+
+.cart-drawer-line.is-removing {
+  opacity: 0.35;
+  transform: scale(0.985);
+  pointer-events: none;
+}
+
+.cart-drawer-line__media {
+  grid-area: media;
+  inline-size: 72px;
+  align-self: start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+}
+
+.cart-drawer-line__media img { padding: 4px; }
+
+.cart-drawer-line__info {
+  grid-area: info;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  padding-block-start: 0.1rem;
+}
+
+.cart-drawer-line__title {
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-ink);
+  text-decoration: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  transition: color var(--duration-fast) ease;
+}
+
+.cart-drawer-line__title:hover { color: var(--color-accent); }
+
+.cart-drawer-line__options {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cart-drawer-line__discounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-block-start: 0.1rem;
+}
+
+.cart-drawer-line__discount {
+  font-size: 0.72rem;
+  background: var(--color-surface-alt);
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  color: var(--color-success);
+}
+
+/* ---------- Unit price ---------- */
+.cart-drawer-line__unit {
+  grid-area: unit;
+  font-size: 0.82rem;
+}
+
+.cart-drawer-line__each {
+  font-family: var(--font-body-family);
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Controls ---------- */
+.cart-drawer-line__controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block-start: 0.2rem;
+}
+
+.cart-drawer-line__remove {
+  grid-area: remove;
+  display: flex;
+  justify-content: flex-end;
+  align-self: start;
+}
+
+.cart-drawer-line__remove-btn {
+  inline-size: 44px;
+  block-size: 44px;
+  color: var(--color-text-muted);
+}
+
+.cart-drawer-line__remove-btn:hover {
+  color: var(--color-danger);
+  background: var(--color-surface-alt);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+}
+
+.cart-drawer-line__total {
+  flex-shrink: 0;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+/* Small phones: reclaim width from the thumbnail column for the title. */
+@media (max-width: 400px) {
+  .cart-drawer-line {
+    grid-template-columns: 64px minmax(0, 1fr) 44px;
+    column-gap: 0.7rem;
+  }
+
+  .cart-drawer-line__media { inline-size: 64px; }
+}
+
+/* ---------- Order note ---------- */
+.cart-drawer__note {
+  margin-block-start: 1.15rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+}
+
+.cart-drawer__note-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: 44px;
+  padding-inline: 0.85rem;
+  font-family: var(--font-heading-family);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cart-drawer__note-toggle .icon { color: var(--color-text-muted); }
+
+.cart-drawer__note-chevron {
+  margin-inline-start: auto;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.cart-drawer__note[open] .cart-drawer__note-chevron { transform: rotate(180deg); }
+
+.cart-drawer__note-field { padding: 0 0.85rem 0.85rem; }
+
+.cart-drawer__note-field .field__textarea {
+  min-block-size: 78px;
+  font-size: 0.92rem;
+}
+
+/* ---------- Footer ---------- */
+.cart-drawer__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cart-drawer__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cart-drawer__row--savings {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+.cart-drawer__row-label {
+  font-family: var(--font-heading-family);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.cart-drawer__subtotal { font-size: 1.1rem; }
+
+.cart-drawer__fineprint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: -0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.cart-drawer__fineprint .icon { flex-shrink: 0; }
+
+.cart-drawer__actions { margin-block-start: 0.15rem; }
+
+.cart-drawer__secondary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+/* Two ghost buttons share one drawer-width row — trim the horizontal padding
+   only, so the 48px tap height of .btn is untouched. The footer sits on
+   surface-alt, so they get a white fill through the component's own API in
+   order to keep a visible hover. */
+.cart-drawer__secondary .btn {
+  padding-inline: 0.9rem;
+  --btn-bg: var(--color-surface);
+}
+
+.cart-drawer__secondary .btn:hover { --btn-bg: var(--color-surface-alt); }
+
+/* ---------- Empty state ---------- */
+.cart-drawer__body--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-drawer__empty { padding-block: 1.25rem; }
+
+.cart-drawer__empty .empty-state__text { max-inline-size: 270px; }
+
+.cart-drawer__empty-cta { margin-block-start: 0.25rem; }
+
+.cart-drawer__popular {
+  inline-size: 100%;
+  margin-block-start: 1.4rem;
+  padding-block-start: 1.3rem;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.cart-drawer__popular-title {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-heading-family);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.cart-drawer__popular-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.cart-drawer__popular-chips .chip {
+  min-block-size: 44px;
+  font-size: 0.85rem;
+}

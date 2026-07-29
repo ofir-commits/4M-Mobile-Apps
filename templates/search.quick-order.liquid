@@ -1,0 +1,77 @@
+{%- comment -%}
+  Alternate search view that returns JSON instead of HTML.
+  Used by assets/quick-order.js to resolve a catalogue number (SKU) or barcode
+  to a concrete variant id, because Shopify's predictive-search endpoint does not
+  expose variant SKUs.
+
+  Request: /search?q=<sku>&type=product&view=quick-order
+  Layout is suppressed so the body is pure JSON.
+{%- endcomment -%}
+{%- layout none -%}
+{%- assign needle = search.terms | strip | downcase -%}
+{
+  "q": {{ search.terms | json }},
+  "results": [
+    {%- assign emitted = 0 -%}
+    {%- for item in search.results -%}
+      {%- if item.object_type == 'product' -%}
+        {%- for variant in item.variants -%}
+          {%- assign sku = variant.sku | default: '' | downcase | strip -%}
+          {%- assign barcode = variant.barcode | default: '' | downcase | strip -%}
+          {%- assign is_match = false -%}
+          {%- if sku != '' and sku == needle -%}{%- assign is_match = true -%}{%- endif -%}
+          {%- if barcode != '' and barcode == needle -%}{%- assign is_match = true -%}{%- endif -%}
+          {%- if is_match and emitted < 12 -%}
+            {%- if emitted > 0 -%},{%- endif -%}
+            {
+              "variant_id": {{ variant.id }},
+              "product_id": {{ item.id }},
+              "exact": true,
+              "sku": {{ variant.sku | json }},
+              "barcode": {{ variant.barcode | json }},
+              "title": {{ item.title | json }},
+              "variant_title": {{ variant.title | json }},
+              "vendor": {{ item.vendor | json }},
+              "price": {{ variant.price }},
+              "available": {{ variant.available | json }},
+              "url": {{ item.url | append: '?variant=' | append: variant.id | json }},
+              "image": {%- if variant.image -%}{{ variant.image | image_url: width: 160 | json }}{%- elsif item.featured_image -%}{{ item.featured_image | image_url: width: 160 | json }}{%- else -%}null{%- endif -%}
+            }
+            {%- assign emitted = emitted | plus: 1 -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endfor -%}
+
+    {%- comment -%}
+      No exact SKU hit — fall back to the best fuzzy product matches so the user
+      still gets something actionable instead of a dead end.
+    {%- endcomment -%}
+    {%- if emitted == 0 -%}
+      {%- for item in search.results limit: 6 -%}
+        {%- if item.object_type == 'product' -%}
+          {%- assign variant = item.selected_or_first_available_variant | default: item.first_available_variant -%}
+          {%- if variant == nil -%}{%- assign variant = item.variants.first -%}{%- endif -%}
+          {%- if variant -%}
+            {%- if emitted > 0 -%},{%- endif -%}
+            {
+              "variant_id": {{ variant.id }},
+              "product_id": {{ item.id }},
+              "exact": false,
+              "sku": {{ variant.sku | json }},
+              "barcode": {{ variant.barcode | json }},
+              "title": {{ item.title | json }},
+              "variant_title": {{ variant.title | json }},
+              "vendor": {{ item.vendor | json }},
+              "price": {{ variant.price }},
+              "available": {{ variant.available | json }},
+              "url": {{ item.url | append: '?variant=' | append: variant.id | json }},
+              "image": {%- if item.featured_image -%}{{ item.featured_image | image_url: width: 160 | json }}{%- else -%}null{%- endif -%}
+            }
+            {%- assign emitted = emitted | plus: 1 -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+  ]
+}

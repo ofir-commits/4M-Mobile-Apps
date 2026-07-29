@@ -1,0 +1,25 @@
+{
+  "type": "footer",
+  "name": "Footer group",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "settings": {
+        "about_text": "<p>א.נ. שילו - חומרי בניין, כלי עבודה, ציוד טכני ומחסן עצים בקיבוץ קרית ענבים. מעל 30 שנה של שירות מקצועי לקבלנים, לנגרים ולמשק הבית.</p>",
+        "show_social": true,
+        "heading_1": "ניווט באתר",
+        "menu_1": "main-menu",
+        "heading_2": "אודותינו",
+        "menu_2": "link-list-3",
+        "show_phone": true,
+        "show_newsletter": false,
+        "newsletter_heading": "מצטרפים לרשימת המבצעים",
+        "newsletter_text": "מבצעים, חידושים בקטלוג וטיפים של מקצוענים - ישירות למייל.",
+        "accessibility_label": "הצהרת נגישות",
+        "accessibility_url": "/pages/הצהרת-נגישות-1",
+        "show_payment_icons": true
+      }
+    }
+  },
+  "order": ["footer"]
+}
