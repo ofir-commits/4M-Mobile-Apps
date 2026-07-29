@@ -68,12 +68,24 @@
   --hero-beam-end: 7%;
   --hero-beam-tilt: 13deg;
 
+  /* Photograph branch, see "Photograph" below. The content is align-start, so the
+     heavy end of the legibility floor and the open end that keeps the picture
+     bright are both direction-dependent. mask-image takes no logical keywords
+     (rule 3 above) but a background gradient is fine as long as the ONE flipped
+     value is the direction itself — same contract as --hero-beam-tilt. */
+  --hero-scrim-dir: to right;
+  --hero-glow-x: 88%;
+
   /* The stage never paints outside itself. NOT content-visibility: this block
      is above the fold and skipping its layout would postpone the LCP text. */
   contain: paint;
 }
 
-[dir="rtl"] .image-banner { --hero-beam-tilt: -13deg; }
+[dir="rtl"] .image-banner {
+  --hero-beam-tilt: -13deg;
+  --hero-scrim-dir: to left;
+  --hero-glow-x: 12%;
+}
 
 /* ---------- Heights ---------- */
 .image-banner--small { min-block-size: clamp(360px, 46vh, 470px); min-block-size: clamp(360px, 46svh, 470px); }
@@ -148,6 +160,86 @@
     rgba(var(--color-ink-rgb), 0.44) 55%,
     rgba(var(--color-ink-rgb), 0.6) 100%
   );
+}
+
+/* ---------- Photograph ----------
+   A real photograph of the yard is the most persuasive thing this page owns, so
+   the job here is to protect the words WITHOUT flattening the picture. The old
+   treatment did the opposite: a flat ink wash across the whole frame plus a
+   full-width scrim, which reads as a dimmed slide no matter how good the photo is.
+
+   Three layers, front to back:
+     1. warm daylight over the open side — the frame reads like light in the yard
+        rather than a tinted panel, and it is the one thing that makes a flat
+        phone photo look deliberate;
+     2. the legibility floor, DIRECTIONAL — heavy under the column of text, gone
+        by the far edge, so the photograph keeps its own contrast where nothing
+        is written over it;
+     3. a short bottom fade that seats the section on the page below.
+
+   Because the merchant's photograph is unknowable in advance, legibility comes
+   from this floor and the text shadows below, never from assuming a dark image. */
+.image-banner--photo .image-banner__scrim {
+  background-image:
+    radial-gradient(
+      ellipse 76% 96% at var(--hero-glow-x) 16%,
+      rgba(var(--color-highlight-rgb), 0.17) 0%,
+      rgba(var(--color-highlight-rgb), 0.05) 42%,
+      transparent 70%
+    ),
+    linear-gradient(
+      var(--hero-scrim-dir),
+      rgba(var(--color-ink-rgb), 0.95) 0%,
+      rgba(var(--color-ink-rgb), 0.86) 34%,
+      rgba(var(--color-ink-rgb), 0.66) 56%,
+      rgba(var(--color-ink-rgb), 0.28) 76%,
+      transparent 95%
+    ),
+    linear-gradient(to top, rgba(var(--color-ink-rgb), 0.5) 0%, transparent 32%);
+}
+
+/* Centred content has no open side to keep bright, so the floor goes vertical and
+   the daylight moves to the top edge where no text sits. Same profile as the
+   phone floor below — both cases put text across the full width, so both need the
+   contrast to come from height rather than from direction. */
+.image-banner--photo.image-banner--align-center .image-banner__scrim {
+  background-image:
+    radial-gradient(
+      ellipse 92% 64% at 50% 4%,
+      rgba(var(--color-highlight-rgb), 0.15) 0%,
+      transparent 64%
+    ),
+    linear-gradient(
+      to top,
+      rgba(var(--color-ink-rgb), 0.9) 0%,
+      rgba(var(--color-ink-rgb), 0.8) 50%,
+      rgba(var(--color-ink-rgb), 0.66) 82%,
+      rgba(var(--color-ink-rgb), 0.7) 100%
+    );
+}
+
+/* A one-time paint on a still image. The no-filter rule at the top of this file
+   guards MOVING surfaces — nothing in this branch animates, so the compositor
+   pays for this once. Phone photographs of a lit yard come back flat and slightly
+   grey; this restores the colour without touching exposure. Deliberately NO
+   brightness(): the merchant's photograph may already be blown out at the sky,
+   and lifting it there costs legibility for nothing. */
+.image-banner--photo .image-banner__media img {
+  filter: saturate(1.1) contrast(1.03);
+}
+
+/* The headline can land on any pixel the merchant uploads, so it carries its own
+   floor: a tight shadow for edge definition against busy detail, a wide one for
+   separation from a bright sky. */
+.image-banner--photo .image-banner__heading {
+  text-shadow:
+    0 1px 3px rgba(var(--color-ink-rgb), 0.55),
+    0 2px 24px rgba(var(--color-ink-rgb), 0.5);
+}
+
+.image-banner--photo .image-banner__eyebrow,
+.image-banner--photo .image-banner__subheading {
+  text-shadow: 0 1px 8px rgba(var(--color-ink-rgb), 0.55);
 }
 
 /* ---------- Designed fallback (no photography yet) ---------- */
@@ -593,11 +685,12 @@
   to { opacity: 1; transform: none; }
 }
 
-/* LCP GUARD. templates/index.json ships no hero image, so the designed branch
-   runs and this <h1> is the homepage LCP element. Chrome will not accept text
-   painted at opacity 0 as an LCP candidate, so fading it in would push LCP out
-   by the whole entrance. It RISES instead: transform only, no opacity, no delay,
-   so the first painted frame already contains the finished text. */
+/* LCP GUARD. templates/index.json now ships a hero photograph, so the eager
+   <img> is normally the homepage LCP element — but this <h1> becomes it again the
+   moment a merchant clears the image (designed branch) or the photo is slow, and
+   Chrome will not accept text painted at opacity 0 as an LCP candidate. So the
+   heading RISES rather than fades: transform only, no opacity, no delay, and the
+   first painted frame already contains the finished text either way. */
 @keyframes hero-heading-rise {
   from { transform: translate3d(0, 14px, 0); }
   to { transform: none; }
@@ -965,6 +1058,27 @@
     background-color: rgba(255, 255, 255, 0.12);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+
+  /* A phone gives the text the full width, so there is no "open side" left to
+     keep bright — the directional floor would leave the end of every line
+     unprotected. It goes vertical, and the daylight moves to the top corner
+     above the text. */
+  .image-banner--photo .image-banner__scrim,
+  .image-banner--photo.image-banner--align-center .image-banner__scrim {
+    background-image:
+      radial-gradient(
+        ellipse 120% 52% at var(--hero-glow-x) 0%,
+        rgba(var(--color-highlight-rgb), 0.16) 0%,
+        transparent 66%
+      ),
+      linear-gradient(
+        to top,
+        rgba(var(--color-ink-rgb), 0.9) 0%,
+        rgba(var(--color-ink-rgb), 0.8) 50%,
+        rgba(var(--color-ink-rgb), 0.66) 82%,
+        rgba(var(--color-ink-rgb), 0.7) 100%
+      );
   }
 
   /* The drawing becomes a watermark rather than disappearing — it is the

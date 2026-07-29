@@ -44,6 +44,16 @@
     assign is_designed = true
   endif
 
+  comment
+    A still photograph is the one branch that gets a directional legibility floor
+    instead of a flat dim, so it needs a class of its own — the stylesheet cannot
+    ask "is there an <img> in here".
+  endcomment
+  assign is_photo = false
+  if hero_image != blank and has_video == false
+    assign is_photo = true
+  endif
+
   assign phone_href = ''
   if settings.store_phone != blank
     assign phone_digits = settings.store_phone | remove: '-' | remove: ' ' | remove: '(' | remove: ')'
@@ -68,7 +78,7 @@
 
 <section
   id="ImageBanner-{{ section.id }}"
-  class="image-banner image-banner--{{ section.settings.height }} image-banner--align-{{ section.settings.alignment }} image-banner--motion-{{ motion }}{% if is_designed %} image-banner--designed{% endif %}{% if show_stage %} image-banner--stage{% endif %}{% if has_video %} image-banner--has-video{% endif %}"
+  class="image-banner image-banner--{{ section.settings.height }} image-banner--align-{{ section.settings.alignment }} image-banner--motion-{{ motion }}{% if is_designed %} image-banner--designed{% endif %}{% if is_photo %} image-banner--photo{% endif %}{% if show_stage %} image-banner--stage{% endif %}{% if has_video %} image-banner--has-video{% endif %}"
   style="--overlay-opacity: {{ overlay }};"
 >
   {%- if has_video -%}
@@ -487,12 +497,12 @@
       "type": "range",
       "id": "overlay_opacity",
       "label": "כהות שכבת ההצללה",
-      "info": "מגבירה את הניגודיות של הטקסט מעל התמונה או הסרטון. אין להוריד מתחת ל-45% כשיש תמונה או סרטון בהירים - מתחת לזה חותמות האמון יורדות מתקן הנגישות AA.",
+      "info": "מכהה את כל הרוחב של המדיה. בתמונה רגילה אין צורך להעלות: הקריאות מובטחת ממילא על ידי שכבת ההגנה שמתחת לטקסט בלבד, כך שהתמונה נשארת בהירה - 25% מספיקים. בסרטון אין שכבה מכוונת כזו, ולכן שם יש להעלות ל-45% לפחות אחרת חותמות האמון יורדות מתקן הנגישות AA.",
       "min": 0,
       "max": 80,
       "step": 5,
       "unit": "%",
-      "default": 55
+      "default": 25
     },
     {
       "type": "header",

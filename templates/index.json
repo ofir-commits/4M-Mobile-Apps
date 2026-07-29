@@ -3,8 +3,10 @@
     "hero": {
       "type": "image-banner",
       "settings": {
+        "image": "shopify://shop_images/unnamed.jpg",
+        "mobile_image": "shopify://shop_images/20220821_092221.jpg",
         "height": "large",
-        "overlay_opacity": 55,
+        "overlay_opacity": 25,
         "eyebrow": "מאז 1990 · קיבוץ קרית ענבים",
         "heading": "חומרי בניין, כלי עבודה ואספקה טכנית - הכל במקום אחד",
         "subheading": "יותר מ-30 שנה שאנשי מקצוע, קבלנים ובעלי בתים סומכים עלינו. 1,900 מוצרים במלאי, מהמותגים המובילים בעולם, עם ייעוץ של צוות שמכיר את השטח.",
