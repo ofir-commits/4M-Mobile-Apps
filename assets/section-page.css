@@ -178,3 +178,27 @@
    p:empty matches only genuinely empty elements, so a deliberate &nbsp; spacer is
    left alone. */
 .rte--legal p:empty { display: none; }
+
+/* Keeps a linked address from interacting with the Hebrew text around it: a Latin
+   run in an RTL paragraph can otherwise be reordered against adjacent neutral
+   characters, so a trailing comma or bracket ends up on the wrong side.
+
+   What this does NOT fix, and it is worth writing down because the live privacy
+   policy has it: an address broken into two runs. That page prints
+   ofir@drortools.co.il as "tools.co.il-ofir@dror" — a plausible-looking but wrong
+   address, dictated wrong by a screen reader too. Measured in Chromium, reading
+   the glyphs back in visual order:
+
+     one <a> holding the whole address          ofir@drortools.co.il   correct
+     two runs split by a neutral, no isolation  drortools.co.il-ofir@dror
+     two runs split by a neutral, isolated      ofir@dror-drortools.co.il
+
+   Isolating each piece only reorders the damage. Nothing in CSS can rejoin runs
+   the markup separated, so that one has to be repaired in the document. */
+.rte--legal a[href^="mailto:"],
+.rte--legal a[href^="tel:"],
+.rte--legal a[href^="http"],
+.main-page--policy .shopify-policy__body a[href^="mailto:"],
+.main-page--policy .shopify-policy__body a[href^="tel:"] {
+  unicode-bidi: isolate;
+}
