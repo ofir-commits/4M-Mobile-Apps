@@ -124,9 +124,23 @@
     if (items.length < 2) return;
 
     var interval = parseInt(track.getAttribute('data-rotate-interval'), 10) || 5000;
-    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var index = 0;
     var timer = null;
+
+    /* Evaluated on every start(), not once at init. The visitor can turn motion off
+       from the accessibility menu at any point in the session, and this bar swaps
+       its content on a timer — accessibility.css can flatten the crossfade but it
+       cannot stop a setInterval, so nothing here was under the visitor's control
+       before. WCAG 2.2.2 wants a mechanism to pause auto-updating content; the
+       widget is that mechanism, and this is what makes it reach the bar. */
+    function reduced() {
+      var root = document.documentElement.classList;
+      return (
+        root.contains('a11y-motion') ||
+        root.contains('no-animations') ||
+        (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      );
+    }
 
     function show(i) {
       index = i;
@@ -151,12 +165,24 @@
     }
 
     function start() {
-      if (reduced) return;
+      if (reduced()) return;
       stop();
       timer = setInterval(function () {
         show((index + 1) % items.length);
       }, interval);
     }
+
+    /* accessibility.js re-applies its state on every toggle and fires this, so a
+       rotation already in flight halts the moment the visitor asks it to — and
+       resumes on the first slide if they change their mind. */
+    document.addEventListener('shilo:motion', function () {
+      if (reduced()) {
+        stop();
+        show(0);
+      } else {
+        start();
+      }
+    });
 
     /* Exposed for the theme editor (block select/deselect) */
     track._pin = function (item) {

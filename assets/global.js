@@ -493,9 +493,18 @@
     const EASE_OPEN = 'cubic-bezier(0.16, 1, 0.3, 1)';
     const EASE_CLOSE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
+    /* Three independent sources, and all three have to be read here rather than
+       left to CSS. accessibility.css suppresses motion by forcing
+       animation-duration and transition-duration to 0.01ms, which reaches every
+       CSS animation on the page but is invisible to the Web Animations API calls
+       below — so before this check, the site's own "stop animations" control did
+       not stop these panels. a11y-motion is that visitor control; no-animations
+       is the merchant's theme setting; the media query is the OS setting. */
     function reduced() {
+      const root = document.documentElement.classList;
       return (
-        document.documentElement.classList.contains('no-animations') ||
+        root.contains('a11y-motion') ||
+        root.contains('no-animations') ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches
       );
     }

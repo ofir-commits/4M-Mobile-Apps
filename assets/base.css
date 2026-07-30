@@ -1103,7 +1103,15 @@ summary::-webkit-details-marker { display: none; }
   -moz-appearance: textfield;
 }
 .qty__input::-webkit-outer-spin-button, .qty__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.qty__input:focus { outline: none; }
+
+/* This field used to be `outline: none` with nothing put back, so tabbing into the
+   quantity — on the product page, in the cart and in the cart drawer — showed no
+   focus indicator at all (WCAG 2.4.7). The offset is negative because .qty sets
+   overflow: hidden, which would clip the global 2px-outset ring. */
+.qty__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
 
 .qty--sm .qty__btn { inline-size: 34px; }
 .qty--sm .qty__input { inline-size: 38px; min-block-size: 36px; font-size: 0.9rem; }

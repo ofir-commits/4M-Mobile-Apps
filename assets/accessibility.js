@@ -59,6 +59,19 @@
         try { video.pause(); } catch (e) { /* detached */ }
       });
     }
+
+    /* The class above turns off CSS motion on its own. Motion driven from
+       JavaScript — the Web Animations API in global.js, the announcement timer in
+       section-header.js — cannot see a stylesheet, so it is told directly. Fired on
+       every apply, including the first, so a preference restored from localStorage
+       lands before anything starts moving. */
+    try {
+      document.dispatchEvent(
+        new CustomEvent('shilo:motion', { detail: { reduced: !!state.motion } })
+      );
+    } catch (e) {
+      /* CustomEvent constructor missing — CSS suppression still applies */
+    }
   }
 
   var state = loadState();
