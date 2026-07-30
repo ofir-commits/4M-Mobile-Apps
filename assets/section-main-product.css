@@ -324,7 +324,13 @@
   transition: opacity var(--duration-base) ease, visibility 0s var(--duration-base);
 }
 
-.product-zoom__frame.is-active {
+/* Gated on .is-open, not just .is-active. `visibility: visible` on a descendant
+   overrides the closed modal's `hidden`, so without the gate the active frame and
+   its image stayed visible to assistive technology — a screen reader could reach
+   the zoom images of a dialog that was never opened — and stayed hit-testable,
+   covering the page beneath. Painting is still driven by .is-active, so the frame
+   the script selects is the one that appears when the dialog opens. */
+.product-zoom.is-open .product-zoom__frame.is-active {
   opacity: 1;
   visibility: visible;
   transition: opacity var(--duration-base) ease;

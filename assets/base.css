@@ -1197,6 +1197,16 @@ html:has(body.scroll-locked) { overflow: hidden; }
 }
 .modal.is-open { visibility: visible; opacity: 1; transition: opacity var(--duration-base) ease; }
 
+/* A closed modal still spans the whole viewport at z-index 110, so it has to be
+   taken out of hit-testing as well as out of sight. `visibility: hidden` above is
+   not enough on its own: any descendant that sets `visibility: visible`
+   explicitly overrides the ancestor and becomes clickable again, and the product
+   zoom's active frame does exactly that. The result was a closed dialog silently
+   swallowing clicks aimed at the page beneath it — on the product page it ate four
+   of the eight controls in the accessibility menu, so a visitor who cannot use a
+   keyboard could not switch on high contrast at all. */
+.modal:not(.is-open) { pointer-events: none; }
+
 .modal__content {
   position: relative;
   inline-size: min(100%, 640px);
