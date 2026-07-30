@@ -168,6 +168,13 @@
   text-align: start;
 }
 
-/* The stray HTML comment Shopify leaves at the end of some policy bodies renders as
-   an empty block and pushed the cross-links down by a full line. */
-.rte--legal > p:empty { display: none; }
+/* Shopify nests the document two levels down (container > body > .rte), and that
+   inner .rte re-declares .rte's own leading — so the looser legal leading has to be
+   applied there rather than on the outer wrapper. */
+.main-page--policy .shopify-policy__body .rte { line-height: 1.85; }
+
+/* Empty paragraphs left behind by the admin editor. Descendant, not child: the
+   paragraphs live inside Shopify's wrappers, not directly under .rte--legal.
+   p:empty matches only genuinely empty elements, so a deliberate &nbsp; spacer is
+   left alone. */
+.rte--legal p:empty { display: none; }
