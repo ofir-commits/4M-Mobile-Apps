@@ -747,6 +747,55 @@
 
 .image-banner--align-center .image-banner__search-wrap { margin-inline: auto; }
 
+/* The live-results panel is absolutely positioned against this form. */
+.image-banner__search { position: relative; }
+
+/* The hero clips its own children (overflow: hidden above) so the motion stage
+   cannot spill, and `isolation: isolate` makes it a stacking context — which means
+   a dropdown hanging below the field would be both cut off at the hero's edge AND
+   painted underneath the section that follows.
+
+   Both are lifted only while the panel is actually open, and only then, so the
+   stage keeps its clip for the rest of the time. :has() carries this with no extra
+   class for JavaScript to toggle and no way for the two to fall out of sync. */
+.image-banner:has([data-search-panel]:not([hidden])) {
+  overflow: visible;
+  z-index: 20;
+}
+
+/* Shorter than the header's dropdown: this one opens mid-hero rather than under a
+   40px-tall bar, so a 580px panel would run past the fold on a laptop. */
+.image-banner__search-panel {
+  inset-block-start: calc(100% + 8px);
+  max-block-size: min(52vh, 420px);
+  text-align: start;
+}
+
+/* The panel is a light surface inside a section that sets `color: #fff`, so the
+   inherited colour has to be put back or the result titles arrive white-on-white. */
+.image-banner__search-panel,
+.image-banner__search-panel .predictive-results__heading { color: var(--color-text); }
+
+.image-banner__search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: 34px;
+  block-size: 34px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+.image-banner__search-clear:hover {
+  color: var(--color-ink);
+  background-color: var(--color-surface-sunken);
+}
+
 .image-banner__search-box {
   display: flex;
   align-items: center;

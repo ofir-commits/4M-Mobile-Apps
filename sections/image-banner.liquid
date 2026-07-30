@@ -281,7 +281,25 @@
 
       {%- if section.settings.show_search -%}
         <div class="image-banner__search-wrap hero-in">
-          <form action="{{ routes.search_url }}" method="get" role="search" class="image-banner__search">
+          {%- comment -%}
+            data-header-search is what wires this field to the live-results
+            controller in assets/section-header.js. That controller is written
+            against attributes, not against the header's markup, so the hero gets
+            the same suggestions-while-typing behaviour as the header field by
+            supplying the same data-search-* hooks — no second implementation, and
+            no duplicated request/cache/abort logic to keep in step.
+
+            The panel reuses .header-search__panel so it inherits the surface,
+            shadow and scroll behaviour already defined for the header dropdown;
+            only its position and height are re-stated for the hero below.
+          {%- endcomment -%}
+          <form
+            action="{{ routes.search_url }}"
+            method="get"
+            role="search"
+            class="image-banner__search"
+            data-header-search
+          >
             <label for="HeroSearchInput-{{ section.id }}" class="visually-hidden">
               {{- 'general.search.title' | t -}}
             </label>
@@ -292,11 +310,26 @@
                 type="search"
                 name="q"
                 placeholder="{{ 'general.search.placeholder' | t | escape }}"
+                role="combobox"
+                aria-expanded="false"
+                aria-controls="HeroSearchPanel-{{ section.id }}"
+                aria-autocomplete="list"
+                aria-label="{{ 'general.search.title' | t | escape }}"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
+                data-search-input
               >
+              <button
+                type="button"
+                class="image-banner__search-clear"
+                data-search-clear
+                hidden
+                aria-label="{{ 'general.search.clear' | t | escape }}"
+              >
+                {%- render 'icon', name: 'close', size: 16 -%}
+              </button>
               <button
                 type="submit"
                 class="btn image-banner__search-submit"
@@ -305,6 +338,60 @@
                 {%- render 'icon', name: 'search', size: 20 -%}
                 <span class="image-banner__search-submit-text">{{ 'general.search.submit' | t }}</span>
               </button>
+            </div>
+
+            <div
+              class="header-search__panel image-banner__search-panel"
+              id="HeroSearchPanel-{{ section.id }}"
+              data-search-panel
+              hidden
+            >
+              {%- comment -%}
+                The popular row exists twice on this section by design: once here,
+                shown by the controller while the field is focused and empty, and
+                once as the static chip row under the field for a visitor who has
+                not touched it. The controller expects to find its own node.
+              {%- endcomment -%}
+              {%- if settings.popular_searches != blank -%}
+                <div class="header-search__popular" data-search-popular hidden>
+                  <p class="predictive-results__heading">{{ 'general.search.popular' | t }}</p>
+                  <div class="header-search__chips">
+                    {%- for term in popular_terms -%}
+                      {%- assign term_clean = term | strip -%}
+                      {%- if term_clean != blank -%}
+                        <a class="chip" href="{{ routes.search_url }}?q={{ term_clean | url_param_escape }}">
+                          {% render 'icon', name: 'search', size: 13 %}
+                          {{ term_clean }}
+                        </a>
+                      {%- endif -%}
+                    {%- endfor -%}
+                  </div>
+                </div>
+              {%- endif -%}
+
+              <div class="header-search__skeleton" data-search-skeleton hidden aria-hidden="true">
+                {%- for i in (1..4) -%}
+                  <div class="header-search__skeleton-row">
+                    <span class="skeleton header-search__skeleton-media"></span>
+                    <span class="header-search__skeleton-lines">
+                      <span class="skeleton header-search__skeleton-line"></span>
+                      <span class="skeleton header-search__skeleton-line header-search__skeleton-line--short"></span>
+                    </span>
+                  </div>
+                {%- endfor -%}
+              </div>
+
+              <div class="header-search__results" data-search-results hidden></div>
+
+              <p class="visually-hidden" role="status" data-search-status></p>
+
+              <template data-search-empty>
+                <div class="predictive-results__empty">
+                  {% render 'icon', name: 'search', size: 30 %}
+                  <p class="predictive-results__empty-title">{{ 'general.search.no_results' | t: terms: '[terms]' }}</p>
+                  <p class="predictive-results__empty-hint">{{ 'general.search.no_results_hint' | t }}</p>
+                </div>
+              </template>
             </div>
           </form>
 

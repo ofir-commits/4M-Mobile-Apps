@@ -141,3 +141,33 @@
 /* The policy documents carry their own "updated on" line, so the template's lead
    is supporting text, not a headline. */
 .main-page--policy .main-page__lead { font-size: 1rem; }
+
+/* Shopify renders the policy document itself, inside its own wrappers, straight
+   into content_for_layout — see the note in layout/theme.liquid for why it cannot
+   be handed a template. These strip its container back to plain flow so the
+   reading column the layout puts around it is the one that governs. */
+.shopify-policy__container {
+  max-inline-size: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Its heading prints the English admin title ("Refund policy"), and the layout
+   renders the Hebrew one from the locale in its place. */
+.shopify-policy__title { display: none; }
+
+.shopify-policy__body { margin: 0; }
+
+/* Belt and braces on direction. The document body is authored in the Shopify admin
+   editor, which stamps inline text-align on paragraphs and occasionally leaves an
+   LTR remnant behind from a paste; the reading direction of the page is the one
+   that should win either way. */
+.main-page--policy .shopify-policy__container,
+.main-page--policy .shopify-policy__body {
+  direction: inherit;
+  text-align: start;
+}
+
+/* The stray HTML comment Shopify leaves at the end of some policy bodies renders as
+   an empty block and pushed the cross-links down by a full line. */
+.rte--legal > p:empty { display: none; }

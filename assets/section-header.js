@@ -418,8 +418,20 @@
     /* Keyboard: combobox-style navigation into the results panel */
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
-        closePanel();
-        return;
+        /* The field is type="search", and the browser's own handling of Escape on
+           one of those is to clear the value — which fires `input`, which lands in
+           the empty-query branch and re-opens the panel on the popular row. So
+           Escape looked like it did nothing at all.
+
+           Closing the popup first and leaving the value alone is also what the
+           ARIA combobox pattern asks for: the first Escape dismisses the popup,
+           and only a second one clears the field. So the default is suppressed
+           only while there is a popup to dismiss. */
+        if (!panel.hidden) {
+          e.preventDefault();
+          closePanel();
+          return;
+        }
       }
       if (e.key === 'ArrowDown' && !panel.hidden) {
         var first = panel.querySelector('a[href], button:not([disabled])');
