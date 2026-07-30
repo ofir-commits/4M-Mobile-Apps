@@ -1,0 +1,75 @@
+{%- comment -%}
+  Renders the cross-links between the legal / "about us" pages, so a visitor who
+  landed on one of them can reach the rest without going back to the footer.
+
+  Source of truth is the merchant's own "אודותינו" menu — the same list the footer
+  renders — so adding a page in Navigation adds it here too, with no theme edit.
+  When that menu is missing or empty the snippet falls back to shop.policies,
+  which Shopify always populates, so a legal page is never left without a way out.
+
+  Usage: {% render 'legal-nav', current_url: policy.url %}
+
+  Params:
+    current_url {String} url of the page being viewed, marked as aria-current
+    menu        {String} menu handle (default 'link-list-3', the אודותינו menu)
+    heading     {String} override the visually-hidden landmark label
+{%- endcomment -%}
+{%- liquid
+  assign menu_handle = menu | default: 'link-list-3'
+  assign legal_menu = linklists[menu_handle]
+  assign nav_label = heading | default: 'general.legal.nav_label' | t
+-%}
+<nav class="legal-nav" aria-label="{{ nav_label | escape }}">
+  <ul class="legal-nav__list" role="list">
+    {%- if legal_menu.links.size > 0 -%}
+      {%- for link in legal_menu.links -%}
+        <li class="legal-nav__item">
+          {%- if link.url == current_url -%}
+            <span class="legal-nav__link legal-nav__link--current" aria-current="page">{{ link.title | escape }}</span>
+          {%- else -%}
+            <a class="legal-nav__link" href="{{ link.url }}">{{ link.title | escape }}</a>
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    {%- else -%}
+      {%- comment -%}
+        Fallback. Labels are resolved from the locale by handle rather than from
+        policy.title, because these policies were left on their English admin
+        defaults ("Refund policy", "Terms of service") — the same reasoning, and
+        the same mapping, as the footer's legal row.
+      {%- endcomment -%}
+      {%- for policy in shop.policies -%}
+        {%- if policy != blank -%}
+          {%- liquid
+            assign policy_handle = policy.url | split: '/' | last
+            case policy_handle
+              when 'refund-policy'
+                assign policy_label = 'sections.footer.policies.refund' | t
+              when 'shipping-policy'
+                assign policy_label = 'sections.footer.policies.shipping' | t
+              when 'privacy-policy'
+                assign policy_label = 'sections.footer.policies.privacy' | t
+              when 'terms-of-service'
+                assign policy_label = 'sections.footer.policies.terms' | t
+              when 'contact-information'
+                assign policy_label = 'sections.footer.policies.contact' | t
+              when 'subscription-policy'
+                assign policy_label = 'sections.footer.policies.subscription' | t
+              when 'legal-notice'
+                assign policy_label = 'sections.footer.policies.legal' | t
+              else
+                assign policy_label = policy.title
+            endcase
+          -%}
+          <li class="legal-nav__item">
+            {%- if policy.url == current_url -%}
+              <span class="legal-nav__link legal-nav__link--current" aria-current="page">{{ policy_label | escape }}</span>
+            {%- else -%}
+              <a class="legal-nav__link" href="{{ policy.url }}">{{ policy_label | escape }}</a>
+            {%- endif -%}
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+  </ul>
+</nav>

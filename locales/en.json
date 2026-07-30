@@ -289,6 +289,11 @@
       "subtitle": "The page you were looking for has moved or doesn't exist. You may find what you need in our catalog.",
       "title": "Page not found"
     },
+    "legal": {
+      "contact_text": "Something in this document unclear? We're happy to explain by phone or email.",
+      "lead": "This document applies to your use of this site and to orders placed through it.",
+      "nav_label": "Company documents and information"
+    },
     "meta": {
       "page": "Page {{ page }}",
       "tagged": "Tagged \"{{ tags }}\""

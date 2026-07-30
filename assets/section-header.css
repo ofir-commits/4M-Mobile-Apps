@@ -205,28 +205,48 @@ a.announcement-bar__text:hover {
 .site-header.is-hidden-up::after { opacity: 0; }
 
 /* Measurement guard — section-header.js toggles is-stuck synchronously to read
-   both heights, and must not start any transition doing it. */
+   both heights, and must not start any transition doing it. The descendant
+   selector matters now that the collapsing rows animate: without it the measure
+   pass would kick off a real 240ms collapse and read a height from the middle
+   of it. */
 .site-header.is-measuring,
-.site-header.is-measuring::after { transition: none; }
+.site-header.is-measuring::after,
+.site-header.is-measuring * { transition: none !important; }
 
 /* ---------- Row 1 — utility strip on ink ---------- */
-/* No transition on block-size. It is a layout-triggering property, so animating
-   it cost a style recalc + layout + paint of the header subtree on the main
-   thread for every one of the ~15 frames of the collapse, right at the start of
-   the gesture (--ease-out is easeOutExpo-shaped and front-loads ~80% of the
-   motion into the first four frames). The collapse is now a single discrete
-   layout on the class flip, which the hysteresis in global.js fires once.
-   Composited motion is kept where it is free: the shadow overlay, the hide-up
-   slide, and the panel animations. */
+/* block-size IS transitioned, against the earlier note in this file that left the
+   collapse discrete for performance. Two things make it affordable here, and both
+   were verified before the transition went back in:
+
+   1. .site-header is position: absolute (see above), so its height is outside the
+      document flow — an animating header relayouts its own subtree and nothing
+      else. The page content below never moves, which was the expensive half.
+   2. The subtree being laid out is this one 44px row: a flex line holding a
+      handful of links. That is a trivial layout, not the whole header.
+
+   The collapse is the most-seen motion on the site — it fires on the first scroll
+   of every visit — and a 44px row disappearing between two frames reads as a
+   glitch, not as a design. The remaining rows below follow the same reasoning.
+   Where motion is genuinely free it still goes to the compositor instead: the
+   shadow overlay, the hide-up slide, and the panel animations. */
 .site-header__util {
   --header-util-h: 44px;
   block-size: var(--header-util-h);
   overflow: hidden;
+  transition: block-size var(--duration-base) var(--ease-out), visibility 0s;
 }
 
 /* visibility drops the collapsed rows' links out of the tab order — height 0 +
-   overflow hidden alone would leave them keyboard-focusable while invisible. */
-.site-header.is-stuck .site-header__util { block-size: 0; visibility: hidden; }
+   overflow hidden alone would leave them keyboard-focusable while invisible.
+   It is held until the collapse has finished, or the row's contents would blink
+   out on frame one and leave an empty box animating shut behind them. Expanding
+   uses the base rule's `visibility 0s`, so they come back immediately. */
+.site-header.is-stuck .site-header__util {
+  block-size: 0;
+  visibility: hidden;
+  transition: block-size var(--duration-base) var(--ease-out),
+    visibility 0s linear var(--duration-base);
+}
 
 .site-header__util-inner {
   display: flex;
@@ -298,6 +318,7 @@ a.site-header__util-item:hover .icon { color: #fff; }
    collapse instead of animating. A ~6px step is imperceptible on its own. */
 .site-header__main {
   padding-block: 0.5rem;
+  transition: padding-block var(--duration-base) var(--ease-out);
 }
 
 .site-header.is-stuck .site-header__main { padding-block: 0.35rem; }
@@ -307,6 +328,7 @@ a.site-header__util-item:hover .icon { color: #fff; }
   align-items: center;
   gap: 0.3rem;
   min-block-size: 56px;
+  transition: min-block-size var(--duration-base) var(--ease-out);
 }
 
 .site-header__burger {
@@ -343,6 +365,8 @@ a.site-header__util-item:hover .icon { color: #fff; }
   max-inline-size: min(var(--logo-width, 260px), 58vw);
   max-block-size: 46px;
   object-fit: contain;
+  transition: max-block-size var(--duration-base) var(--ease-out),
+    max-inline-size var(--duration-base) var(--ease-out);
 }
 
 .site-header__logo-text {
@@ -419,6 +443,7 @@ a.site-header__util-item:hover .icon { color: #fff; }
   padding-inline: 0.6rem 0.3rem;
   min-block-size: 50px;
   font-size: 1rem;
+  transition: min-block-size var(--duration-base) var(--ease-out);
 }
 
 .header-search__input:focus { outline: none; }
@@ -1094,13 +1119,35 @@ details[open] > .menu-drawer__toggle .icon-chevron { transform: rotate(180deg); 
     border-block-end: 1px solid var(--color-border);
   }
 
+  /* The department row's height is `auto` — one line at wide widths, two when the
+     12 labels wrap between 990 and 1400px — so it cannot be pinned to a number
+     without breaking the wrap. auto → 0 only interpolates where interpolate-size
+     is supported, which is exactly what this asks for; everywhere else the row
+     keeps folding in one frame, as it always did, and nothing else changes.
+     border-block-end-width rides along so the 1px rule thins out with the row
+     instead of dropping away on frame one. */
+  @supports (interpolate-size: allow-keywords) {
+    .site-header__nav {
+      interpolate-size: allow-keywords;
+      transition: block-size var(--duration-base) var(--ease-out),
+        border-block-end-width var(--duration-base) var(--ease-out), visibility 0s;
+    }
+
+    .site-header.is-stuck .site-header__nav {
+      transition: block-size var(--duration-base) var(--ease-out),
+        border-block-end-width var(--duration-base) var(--ease-out),
+        visibility 0s linear var(--duration-base);
+    }
+  }
+
   /* Compressed state: utility + nav rows fold away, leaving logo + search +
      actions. The burger takes over so the catalogue stays one tap away.
-     Every declaration in this block is untransitioned on purpose — see the note
-     on .site-header__util. They all resolve in the same single layout pass.
-     The nav row never animated anyway: its base block-size is `auto`, and
-     auto → 0 is not interpolable without interpolate-size/calc-size, so the row
-     already snapped in one frame while the reserve spacer was still chasing it. */
+     These now interpolate together with the utility row above, so the whole
+     compression reads as one movement instead of a row vanishing while the logo
+     jumps. The transitions are declared on the base rules (below) rather than
+     here, so expanding and collapsing share the same curve.
+     The nav row is the one exception — its base block-size is `auto`, and
+     auto → 0 needs interpolate-size, so it gets its own @supports block. */
   .site-header.is-stuck .site-header__main { padding-block: 0.4rem; }
   .site-header.is-stuck .site-header__row { min-block-size: 52px; }
   .site-header.is-stuck .site-header__logo-img {

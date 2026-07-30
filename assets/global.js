@@ -455,18 +455,246 @@
     }
   );
 
+  /* ---------- Details disclosure ----------
+     A native <details> has no in-between state: the frame before it is open it is
+     shut, and every accordion on the site — product description, shipping, FAQ,
+     the mobile menu's submenus — appeared and vanished in one frame. The nav
+     panels were half-done: CSS could animate them IN, because the element is new
+     when it opens, but nothing can animate an element the browser is about to
+     stop rendering, so they still blinked out.
+
+     So `open` is taken over here. A summary click is intercepted, the motion runs,
+     and only then does `open` flip — on close it flips at the END, which is the
+     whole point. Two strategies, chosen per element by asking the browser where
+     the content actually sits:
+
+       height  in-flow content (accordions, menu submenus): animate the <details>
+               box between its summary height and its full height. box-sizing is
+               border-box theme-wide, so the content's own padding collapses with
+               it and no wrapper element is needed.
+       fade    out-of-flow content (the nav dropdown panels): the panel is
+               position: absolute and contributes nothing to the box, so there is
+               no height to animate — it gets opacity and a short lift instead,
+               mirroring the existing header-panel-in keyframes. Critically this
+               strategy never sets overflow on the <details>, which would clip the
+               very panel it is trying to animate.
+
+     Interruptions read the CURRENT rendered height rather than the resting one, so
+     a double-click reverses from wherever the motion had got to instead of
+     snapping to an end state first. */
+  const DISCLOSURE_SELECTOR =
+    '.accordion__item, .menu-drawer__sub, .site-nav__dropdown, .cart-drawer__note, .request-price__form-wrap';
+
+  const Disclosure = (function () {
+    const running = new WeakMap();
+    /* Matches --ease-out / --duration-base in the stylesheets. Closing runs on a
+       faster, front-loaded curve: waiting for a panel to leave feels slower than
+       waiting for one to arrive, even at identical durations. */
+    const EASE_OPEN = 'cubic-bezier(0.16, 1, 0.3, 1)';
+    const EASE_CLOSE = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+    function reduced() {
+      return (
+        document.documentElement.classList.contains('no-animations') ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      );
+    }
+
+    function summaryOf(details) {
+      return Array.prototype.find.call(details.children, (el) => el.tagName === 'SUMMARY');
+    }
+
+    function contentOf(details) {
+      const summary = summaryOf(details);
+      let el = summary ? summary.nextElementSibling : details.firstElementChild;
+      /* Skip anything with no box of its own (a stray <template>, a script). */
+      while (el && !el.getClientRects().length && el.tagName !== 'DIV' && el.tagName !== 'UL') {
+        el = el.nextElementSibling;
+      }
+      return el;
+    }
+
+    /* Long documents should not take proportionally longer to open — the distance
+       sets the duration, but only within a band that still feels immediate. */
+    function durationFor(distance) {
+      return Math.min(420, Math.max(170, Math.round(Math.abs(distance) * 0.55)));
+    }
+
+    function clear(details) {
+      const state = running.get(details);
+      if (state) {
+        state.animations.forEach((a) => a.cancel());
+        running.delete(details);
+      }
+    }
+
+    function settle(details) {
+      details.style.removeProperty('height');
+      details.style.removeProperty('overflow');
+    }
+
+    function isFloating(content) {
+      if (!content) return false;
+      const position = window.getComputedStyle(content).position;
+      return position === 'absolute' || position === 'fixed';
+    }
+
+    function open(details) {
+      if (!details || details.dataset.disclosureBusy === 'open') return;
+      clear(details);
+      const content = contentOf(details);
+
+      if (reduced() || !details.animate) {
+        details.open = true;
+        settle(details);
+        return;
+      }
+
+      if (isFloating(content)) {
+        /* The panel is new in the DOM, so the stylesheet's own entrance keyframes
+           play on their own — setting open is the whole job. */
+        details.open = true;
+        delete details.dataset.disclosureBusy;
+        return;
+      }
+
+      const from = details.offsetHeight;
+      details.open = true;
+      const to = details.offsetHeight;
+      if (to <= from) {
+        settle(details);
+        return;
+      }
+
+      details.style.overflow = 'hidden';
+      details.dataset.disclosureBusy = 'open';
+      const duration = durationFor(to - from);
+      const box = details.animate(
+        { height: [from + 'px', to + 'px'] },
+        { duration: duration, easing: EASE_OPEN }
+      );
+      const animations = [box];
+      if (content && content.animate) {
+        animations.push(
+          content.animate(
+            { opacity: [0, 1], transform: ['translateY(-6px)', 'translateY(0)'] },
+            { duration: Math.round(duration * 0.85), easing: EASE_OPEN, delay: 40, fill: 'backwards' }
+          )
+        );
+      }
+      running.set(details, { animations: animations, dir: 'open' });
+      box.addEventListener('finish', () => {
+        running.delete(details);
+        delete details.dataset.disclosureBusy;
+        settle(details);
+      });
+    }
+
+    function close(details, options) {
+      if (!details || !details.open) return;
+      const focusSummary = options && options.focusSummary;
+      const summary = summaryOf(details);
+      if (details.dataset.disclosureBusy === 'close') return;
+      clear(details);
+      const content = contentOf(details);
+
+      const done = () => {
+        details.open = false;
+        delete details.dataset.disclosureBusy;
+        settle(details);
+        if (focusSummary && summary) summary.focus();
+      };
+
+      if (reduced() || !details.animate) {
+        done();
+        return;
+      }
+
+      if (isFloating(content)) {
+        details.dataset.disclosureBusy = 'close';
+        const fade = content.animate(
+          { opacity: [1, 0], transform: ['translateY(0)', 'translateY(-6px)'] },
+          { duration: 150, easing: EASE_CLOSE }
+        );
+        running.set(details, { animations: [fade], dir: 'close' });
+        fade.addEventListener('finish', () => {
+          running.delete(details);
+          done();
+        });
+        /* A cancelled fade means "reopened mid-close" — the reopen path owns the
+           element from that point, so this must not also flip open to false. */
+        fade.addEventListener('cancel', () => {
+          delete details.dataset.disclosureBusy;
+        });
+        return;
+      }
+
+      const from = details.offsetHeight;
+      const to = summary ? summary.offsetHeight : 0;
+      if (from <= to) {
+        done();
+        return;
+      }
+
+      details.style.overflow = 'hidden';
+      details.dataset.disclosureBusy = 'close';
+      const duration = durationFor(from - to);
+      const box = details.animate(
+        { height: [from + 'px', to + 'px'] },
+        { duration: duration, easing: EASE_CLOSE }
+      );
+      const animations = [box];
+      if (content && content.animate) {
+        animations.push(
+          content.animate(
+            { opacity: [1, 0] },
+            { duration: Math.round(duration * 0.7), easing: EASE_CLOSE }
+          )
+        );
+      }
+      running.set(details, { animations: animations, dir: 'close' });
+      box.addEventListener('finish', () => {
+        running.delete(details);
+        done();
+      });
+      box.addEventListener('cancel', () => {
+        delete details.dataset.disclosureBusy;
+      });
+    }
+
+    function toggle(details) {
+      if (details.open) close(details);
+      else open(details);
+    }
+
+    return { open: open, close: close, toggle: toggle, selector: DISCLOSURE_SELECTOR };
+  })();
+
+  window.ShiloDisclosure = Disclosure;
+
+  /* Enter and Space on a <summary> both dispatch a click, so this one listener
+     covers pointer and keyboard alike. */
+  document.addEventListener('click', (e) => {
+    const summary = e.target.closest('summary');
+    if (!summary) return;
+    const details = summary.parentElement;
+    if (!details || details.tagName !== 'DETAILS') return;
+    if (!details.matches(DISCLOSURE_SELECTOR)) return;
+    e.preventDefault();
+    Disclosure.toggle(details);
+  });
+
   /* ---------- Details disclosure (dropdown menus) ---------- */
   document.addEventListener('click', (e) => {
     document.querySelectorAll('details[data-disclosure][open]').forEach((details) => {
-      if (!details.contains(e.target)) details.removeAttribute('open');
+      if (!details.contains(e.target)) Disclosure.close(details);
     });
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       document.querySelectorAll('details[data-disclosure][open]').forEach((details) => {
-        details.removeAttribute('open');
-        details.querySelector('summary')?.focus();
+        Disclosure.close(details, { focusSummary: true });
       });
     }
   });
