@@ -75,10 +75,26 @@ These close the remaining 66 rows. None can be done from the code.
   into the pixels (1.4.5). The theme renders all headings as live text.
 - **Confirm with Shopify** that the spam challenge on the contact, account and
   comment forms is accessible and offers a non-visual alternative (1.1.1).
-- **A מורשה נגישות שירות opinion.** תקנה 29 requires the statement and the
-  adjustments be prepared in consultation with one, and the five-yearly periodic
-  inspection (טופס 9) is carried out by them. This audit is a self-check to hand
-  over as a starting point — it is not that opinion and does not substitute for it.
+**No מורשה נגישות is needed for any of the six.** They need time and the free
+tools — NVDA, Lighthouse, WAVE, `validator.w3.org` — not a paid licence.
+
+An earlier draft of this file claimed תקנה 29 requires the statement and the
+adjustments be prepared in consultation with a מורשה נגישות שירות. That was
+wrong, and it is corrected here because it would have sent the owner to pay for
+something the regulations do not ask of a website. What the sources actually say:
+
+- The accessibility statement is **published by the site owner or operator**. No
+  licensed signature on it.
+- The Commission's own instruction sheet in `form-blank.xlsx` names a מורשה in
+  exactly one place (cell D12): granting an **exemption** from an adjustment that
+  is technologically impossible, on the strength of an internet professional's
+  opinion. Nothing in it requires a מורשה to complete the form.
+- A מורשה נגישות שירות does carry out the **five-yearly periodic inspection**
+  (טופס 9) — a different document, covering the whole service including the
+  physical shop, not the website alone.
+
+Anything turning on the exact obligations is worth confirming free of charge with
+the Commission's public-inquiry line, `*6763`.
 
 ## Accessibility coordinator
 
