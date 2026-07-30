@@ -462,10 +462,12 @@
   min-inline-size: 0;
 }
 
+/* 0.73rem on the accent wash — the smallest text in the theme sitting on a tinted
+   surface, so the readable accent ink, not the accent. See --color-accent-ink. */
 .facet__selected {
   font-size: 0.73rem;
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   background: var(--color-accent-soft);
   padding: 0.1rem 0.55rem;
   border-radius: var(--radius-pill);

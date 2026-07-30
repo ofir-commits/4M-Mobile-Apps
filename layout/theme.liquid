@@ -168,6 +168,15 @@
         --color-accent-rgb: {{ settings.color_accent.rgb | replace: ' ', ', ' }};
         --color-accent-soft: {{ settings.color_accent | color_mix: '#ffffff', 8 }};
         --color-accent-tint: {{ settings.color_accent | color_mix: '#ffffff', 14 }};
+        {%- comment -%}
+          Accent text sitting ON one of the two accent washes above. The accent
+          itself is only 4.47:1 on --color-accent-soft and 4.06:1 on
+          --color-accent-tint, both under the 4.5:1 that WCAG 2.0 AA — and so
+          ת"י 5568 — requires for body-size text. The hover shade clears it on
+          both (6.07:1 and 5.52:1) at the same hue, so it is the readable ink for
+          these surfaces rather than a hover-only colour.
+        {%- endcomment -%}
+        --color-accent-ink: {{ settings.color_accent_hover }};
 
         /* ---- Structure ---- */
         --color-ink: {{ settings.color_ink }};

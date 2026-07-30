@@ -427,15 +427,19 @@ summary::-webkit-details-marker { display: none; }
   box-shadow: none;
 }
 
+/* --color-accent-ink, not --color-accent: the plain accent is 4.47:1 on the soft
+   wash and 4.06:1 on the tint, both short of AA. The hover shade reads the same
+   at a glance and clears it on both, so the hover here is carried by the
+   background shift alone. */
 .btn--quiet {
   --btn-bg: var(--color-accent-soft);
-  --btn-color: var(--color-accent);
+  --btn-color: var(--color-accent-ink);
   --btn-border: transparent;
   --btn-shadow: none;
 }
 .btn--quiet:hover {
   --btn-bg: var(--color-accent-tint);
-  --btn-color: var(--color-accent-hover);
+  --btn-color: var(--color-accent-ink);
   box-shadow: none;
 }
 
@@ -529,7 +533,8 @@ summary::-webkit-details-marker { display: none; }
 .badge--new { background: var(--color-ink); color: #fff; }
 .badge--offer { background: var(--color-highlight); color: #3D2600; }
 .badge--outline { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted); }
-.badge--soft { background: var(--color-accent-soft); color: var(--color-accent); }
+/* Badges are 0.76rem — small text, so the full 4.5:1 applies. See --color-accent-ink. */
+.badge--soft { background: var(--color-accent-soft); color: var(--color-accent-ink); }
 
 .chip {
   display: inline-flex;
@@ -601,10 +606,13 @@ summary::-webkit-details-marker { display: none; }
 
 .price--on-sale .price__current { color: var(--color-sale); }
 
+/* The wash is derived from the accent, so the ink is too. Pairing --color-sale
+   with it read 4.47:1 and also let two independent theme settings drift into an
+   unreadable combination; both sides of this badge now move together. */
 .price__save {
   font-size: 0.78em;
   font-weight: 700;
-  color: var(--color-sale);
+  color: var(--color-accent-ink);
   background: var(--color-accent-soft);
   padding: 0.1rem 0.45rem;
   border-radius: var(--radius-pill);
@@ -1493,10 +1501,13 @@ html:has(body.scroll-locked) { overflow: hidden; }
 
 .variant-pill input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
+/* The selected variant's label is the one piece of text in this pill, so it takes
+   the readable accent ink rather than the accent itself — see --color-accent-ink.
+   The border stays the full accent: it is a boundary, judged at 3:1, not 4.5:1. */
 .variant-pill.is-selected, .variant-pill:has(input:checked) {
   border-color: var(--color-accent);
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-accent-ink);
   box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.12);
 }
 
