@@ -11,6 +11,33 @@ Audited 30 July 2026 against the Commission's own inspection form
 workbook is `anshilo-accessibility-form.xlsx` in this folder: one sheet per page
 template, all 42 criteria, with the evidence for each answer.
 
+## ⚠ What this audit is actually about
+
+**The theme audited here is not the one the public sees.** Everything below — and
+every fix in this branch — lives in `shilov8theme` (id `148378648655`), which is
+**unpublished**. The live theme is `שמירה 1` (id `141469646927`, last touched
+2026-03-28), a different theme that does not contain `assets/base.css`,
+`assets/global.js`, `assets/accessibility.js`, `assets/section-page.css` or
+`snippets/accessibility-widget.liquid` at all.
+
+This was caught by a browser check of the live site, not by me — I verified every
+upload by comparing md5 against the theme file and never checked the theme's
+**role**, so "live" in earlier commit messages meant "matches on the draft theme",
+which is not the same thing and should not have been written that way.
+
+Two consequences that matter more than the audit itself:
+
+- The published accessibility statement describes the built-in accessibility menu
+  and its nine controls. That menu is in the draft theme. The live site instead
+  carries a third-party widget whose first button reports itself as
+  *"אינו פעיל זמנית"*. Until the draft is published, the statement claims
+  adjustments the public site does not have — in a document filed under
+  תקנה 93(א), that is the exact failure mode to avoid.
+- Store-level content **is** live regardless of theme: the five policy documents
+  and the accessibility statement page. Those were verified through the Admin API.
+
+Publishing the theme is the owner's decision and is not done from here.
+
 ## The honest summary
 
 | | |
