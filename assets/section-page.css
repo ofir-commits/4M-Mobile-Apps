@@ -181,20 +181,19 @@
 
 /* Keeps a linked address from interacting with the Hebrew text around it: a Latin
    run in an RTL paragraph can otherwise be reordered against adjacent neutral
-   characters, so a trailing comma or bracket ends up on the wrong side.
+   characters, so a trailing comma or bracket ends up on the wrong side. Verified
+   in Chromium by reading the rendered glyphs back in visual order, which is the
+   only way to see this class of bug — the source order is always correct.
 
-   What this does NOT fix, and it is worth writing down because the live privacy
-   policy has it: an address broken into two runs. That page prints
-   ofir@drortools.co.il as "tools.co.il-ofir@dror" — a plausible-looking but wrong
-   address, dictated wrong by a screen reader too. Measured in Chromium, reading
-   the glyphs back in visual order:
-
-     one <a> holding the whole address          ofir@drortools.co.il   correct
-     two runs split by a neutral, no isolation  drortools.co.il-ofir@dror
-     two runs split by a neutral, isolated      ofir@dror-drortools.co.il
-
-   Isolating each piece only reorders the damage. Nothing in CSS can rejoin runs
-   the markup separated, so that one has to be repaired in the document. */
+   Scope note, because an earlier version of this comment got it wrong. The
+   mangled address on the live privacy policy is NOT a rendering fault and this
+   rule does not address it: the string is stored corrupted. Reading the policy
+   body back through the Admin API returns "tools.co.il-ofir@dror" — which
+   contains a hyphen that the real address, ofir@drortools.co.il, does not have,
+   and bidi reordering never inserts characters. So the visual order was captured
+   into the data itself, almost certainly by copying the address out of an
+   RTL-rendered document and pasting what the screen showed. No stylesheet can
+   undo that; it has to be retyped in the document. */
 .rte--legal a[href^="mailto:"],
 .rte--legal a[href^="tel:"],
 .rte--legal a[href^="http"],
